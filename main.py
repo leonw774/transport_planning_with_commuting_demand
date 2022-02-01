@@ -9,7 +9,7 @@ from nets import getRoadNetwork, getTransitNetwork, getTrajectoryData, SortedEdg
 """
 input: road network, trajectory data
 side effect:
-- add 'demand' attribute to some of road network edges
+- calculate and add 'demand' attribute to some of road network edges
 """
 def computeDemand(roadNet: nx.Graph, trajData: list):
     for traj in trajData:
@@ -22,8 +22,7 @@ def computeDemand(roadNet: nx.Graph, trajData: list):
 input: road network, transit network, seeding number
 side effects:
 - road_length_max: find and set to max
-- cast the 'length' attribute of roadNet edge from string to float
-- add 'weighted_demand' attribute the roadNet edges that has 'demand'
+- calculate and add 'weighted_demand' attribute the roadNet edges that has 'demand'
 reutrn:
 - Ld (SortedEdgeDemandList) with length limit of sn
 """
@@ -31,7 +30,7 @@ def getCandidateEdges(roadNet: nx.Graph, transitNet: nx.Graph, sn: int):
     global road_length_max
     # find road_length_max
     for u, v in roadNet.edges():
-        l = roadNet.edges[u, v]['length'] = float(roadNet.edges[u, v]['length']) # because every thing in road network is stored as string
+        l = roadNet.edges[u, v]['length'] # because every thing in road network is stored as string
         if l > road_length_max:
             road_length_max = l
 
@@ -59,13 +58,11 @@ to be re-implemented
 def outputResult(mu: list, mu_tn:int,  Omax: float, roadNet: nx.Graph, transitNet: nx.Graph, trajData: list, output_path: str):
     # draw all roads
     # darker means more demands
-    for u, v in roadNet.edges():
-        e = roadNet.edges[u, v]
-        if 'demand' in e:
-            d = min(1.0, roadNet.edges[u, v]['demand'] / len(trajData))
-            color = (0.0, d, 0.0, 0.25)
-        else:
-            color = (0.0, 0.0, 0.0, 0.1)
+    
+    max_demand = max([attr.get('demand', 0) for u, v, attr in roadNet.edges(data=True)])
+    for u, v, attr in roadNet.edges(data=True):
+        d = min(1.0, attr.get('demand', 0) / max_demand)
+        color = (0.0, 0.0, 0.0, d)
         plt.plot(
             [roadNet.nodes[u]['x'], roadNet.nodes[v]['x']],
             [roadNet.nodes[u]['y'], roadNet.nodes[v]['y']],
@@ -200,6 +197,7 @@ if __name__ == '__main__':
     #### initialization phase
 
     Ld = getCandidateEdges(roadNet, transitNet, args.sn)
+    K = min(len(Ld), K)
 
     # calculate dmax
     for i in range(K):

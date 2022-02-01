@@ -41,7 +41,6 @@ def makeTestTransitNet(roadNet, number, tau):
         generated_stops.add((x, y))
         Gr.add_node(i, road=e, x=x, y=y)
         i += 1
-            
 
     # add edges and find shortest path between bus stops within distance tau
     findNeighbors(Gr, roadNet, tau)

@@ -3,7 +3,7 @@ import pandas as pd
 from geo import haversine
 
 """
-When read in from graphml file, every attribute is string
+When read in from graphml file, every attribute is string, so have to convert
 """
 
 def getRoadNetwork(path: str) -> nx.Graph:
@@ -59,6 +59,9 @@ class SortedEdgeDemandList():
         for (u, v), demand in sortedlist:
             self.edge2d[(u, v)] = demand
             self.edge2d[(v, u)] = demand
+    
+    def __len__(self):
+        return len(self.edges)
 
 """
     find the shortest path between the two road segments its two nodes represent on the road network.
@@ -97,7 +100,7 @@ def findNeighbors(transitNet: nx.Graph, roadNet: nx.Graph, tau: float):
     checked = set()
     for ni, attri in transitNet.nodes(data=True):
         for nj, attrj in transitNet.nodes(data=True):
-            if frozenset([ni, nj]) in checked:
+            if frozenset([ni, nj]) in checked or ni == nj:
                 continue
             checked.add(frozenset([ni, nj]))
             if haversine(attri['x'], attri['y'], attrj['x'], attrj['y']) < tau:
