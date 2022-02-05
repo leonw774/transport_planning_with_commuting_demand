@@ -119,6 +119,7 @@ Priority queue也寫了一個class `MyPQ`包住，在`pq.py`。
 - 會發生beginning edge和ending edge是同一個的狀況，根據paper第3頁的註解4，頭尾相連的環形路線是允許的。所以`be == ee`的路線可作為$\mu$的候選路線，但不能expand。
 - `computeAngle`是計算路線最未端的三個站點的實際地理位置依順序連接的兩個折線之間的夾角
 - 與計算夾角和距離有關的函數(包含`computeAngle`)都放在`geo.py`，而因為我用的臨時自產dataset提供的坐標是經緯度，所以目前實作的內容都是當球面在算。實際的dataset來了之後看情況會再改。
+- paper裡面給algorithm裡面`tn`和$\mu$的更新的先後順序很奇怪？
 
 ### 4. 輸出與視覺化
 

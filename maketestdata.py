@@ -5,8 +5,8 @@ import pandas as pd
 from random import choice, sample, random
 from nets import haversine, getRoadNetwork, findNeighbors
 
-def makeTestRoadNet(point, output_path):
-    G = osmnx.graph_from_point(point, dist=1500, network_type='drive', retain_all=False)
+def makeTestRoadNet(point, distance, output_path):
+    G = osmnx.graph_from_point(point, dist=distance, network_type='drive', retain_all=False)
     osmnx.plot_graph(G)
     G = osmnx.utils_graph.get_undirected(G)
     osmnx.io.save_graphml(G, output_path)
@@ -80,11 +80,12 @@ def makeTestTrajectoryData(roadNet, number):
     return trajs
 
 if __name__ == "__main__":
-    NS = 25          # number of bus stops
+    RSIZE = 2000     # dist for road network
+    NS = 150         # number of bus stops
     NT = 100         # number of trajectories
     TAU = 500        # distance in meter
     print('tau =', TAU)
-    G = makeTestRoadNet((25.0460, 121.5200), 'data/road.graphml')
+    G = makeTestRoadNet((25.0460, 121.5200), RSIZE, 'data/road.graphml')
     print(f'Road network has {G.number_of_edges()} edges')
     Gr = makeTestTransitNet(G, NS, TAU)
     print(f'Transit network has {Gr.number_of_nodes()} stops, {Gr.number_of_edges()} edges')

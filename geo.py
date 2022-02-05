@@ -17,13 +17,12 @@ def haversine(lon1, lat1, lon2, lat2):
     - latitude of point 2
     - longitude difference of point 1 and 2
     all angle are in radians
-    output: initial bearing from point 1 to point 2, ranging from -PI to PI
+    output: initial bearing from point 1 to point 2, in [-PI, PI] range
 """
 def bearing(lat1, lat2, dlong):
     y = sin(dlong) * cos(lat2)
     x = cos(lat1) * sin(lat2) - sin(lat1) * cos(lat2) * cos(dlong)
     theda = atan2(y, x)
-    if theda < 0: theda += 2*pi
     return theda
 
 """
@@ -31,7 +30,7 @@ def bearing(lat1, lat2, dlong):
     description:
     compute the angle between line n1->n2 and line n2->n3.
     the line of two nodes is a line that pass through the two nodes' geometrical location
-    return: the angle in radian in [0, 2*PI) range
+    return: the angle in radian in [0, PI] range
 """
 def computeAngle(point1, point2, point3) -> float:
     x1, y1 = point1
@@ -41,5 +40,6 @@ def computeAngle(point1, point2, point3) -> float:
     lat1, lat2, lat3, dlon12, dlon23 = map(radians, [y1, y2, y3, x2 - x1, x3 - x2])
     bearing12 = bearing(lat1, lat2, dlon12)
     bearing23 = bearing(lat2, lat3, dlon23)
-    dbearing = abs(bearing12 - bearing23)
+    dbearing = abs(bearing23 - bearing12)
+    if dbearing > pi: dbearing = 2*pi - dbearing
     return dbearing

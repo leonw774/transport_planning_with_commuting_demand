@@ -1,5 +1,6 @@
 import networkx as nx
 import matplotlib.pyplot as plt
+from math import degrees
 from geo import computeAngle
 
 """
@@ -11,7 +12,7 @@ def outputResult(mu: list, mu_tn:int,  Omax: float, roadNet: nx.Graph, transitNe
     # darker means more demands
     max_demand = max([attr.get('demand', 0) for u, v, attr in roadNet.edges(data=True)])
     for u, v, attr in roadNet.edges(data=True):
-        d = min(1.0, attr.get('demand', 0) / max_demand)
+        d = max(min(1.0, attr.get('demand', 0) / max_demand), 0.05)
         color = (0.0, 0.0, 0.0, d)
         plt.plot(
             [roadNet.nodes[u]['x'], roadNet.nodes[v]['x']],
@@ -47,16 +48,16 @@ def outputResult(mu: list, mu_tn:int,  Omax: float, roadNet: nx.Graph, transitNe
                     (transitNet.nodes[mu[i-1]]['x'], transitNet.nodes[mu[i-1]]['y']),
                     (transitNet.nodes[mu[i]]['x'], transitNet.nodes[mu[i]]['y']),
                     (transitNet.nodes[mu[i+1]]['x'], transitNet.nodes[mu[i+1]]['y']))
-                angle = round(angle, 2)
+                angle = '\n' + str(round(degrees(angle), 1))
             else:
                 angle = ''
             plt.plot(transitNet.nodes[n]['x'], transitNet.nodes[n]['y'], 'sb', markersize=2)
             plt.annotate(
-                f'#{i}\n{angle}', 
+                f'#{i}{angle}', 
                 (transitNet.nodes[n]['x'], transitNet.nodes[n]['y']),
                 fontsize=8)
         else:
-            plt.plot(transitNet.nodes[n]['x'], transitNet.nodes[n]['y'], 'sk', markersize=2)
+            plt.plot(transitNet.nodes[n]['x'], transitNet.nodes[n]['y'], 'sg', markersize=2)
     
     plt.suptitle(f'number of turns: {mu_tn} \n transit path: {mu} \n Omax: {Omax}')
     plt.savefig(output_path+'.png')

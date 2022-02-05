@@ -102,7 +102,7 @@ if __name__ == '__main__':
                         dest='tnmax',
                         type=int,
                         default=3,
-                        help='threshold for number of turns'
+                        help='threshold for number of turns, set -1 to be unlimited'
                         )
     parser.add_argument('--sn', '--seeding-number',
                         dest='sn',
@@ -119,7 +119,8 @@ if __name__ == '__main__':
     parser.add_argument('--output-path', '-o',
                         dest='output_path',
                         type=str,
-                        default='output'
+                        default='output',
+                        help='output file path. set to empty string (-o=\'\') to disable output'
                         )        
     args = parser.parse_args()
     
@@ -131,17 +132,17 @@ if __name__ == '__main__':
 
     ######## GLOBAL VARIABLE INITIALIZATION 
 
-    Q = MyPQ()                          # priority queue
-    DT = dict()                         # domination table
-    K = transitNet.number_of_nodes()    # maximum number of node in final path
-    Ld = None                           # list of edges sorted in descending order base on their demand 
-    dmax = 0                            # largest possible demand value
-    mu = list()                         # best path so far, is a list of nodes
-    mu_tn = 0                           # number of turn that path mu has
-    Omax = 0                            # objective value of mu
-    it = 0                              # iteration counter
-    itmax = args.itmax                  # limit of iteration
-    tnmax = args.tnmax                  # threshold for number of turns
+    Q = MyPQ()                                  # priority queue
+    DT = dict()                                 # domination table
+    K = transitNet.number_of_nodes()            # maximum number of node in final path
+    Ld = None                                   # list of edges sorted in descending order base on their demand 
+    dmax = 0                                    # largest possible demand value
+    mu = list()                                 # best path so far, is a list of nodes
+    mu_tn = 0                                   # number of turn that path mu has
+    Omax = 0                                    # objective value of mu
+    it = 0                                      # iteration counter
+    itmax = args.itmax                          # limit of iteration
+    Tn = args.tnmax if args.tnmax >= 0 else K   # threshold for number of turns
 
     ######## PRE-PROCESS
 
@@ -215,15 +216,14 @@ if __name__ == '__main__':
             Ocp = maxd_be / dmax + Ocp
         else:
             Ocp = (maxd_be + maxd_ee) / dmax + Ocp
-        
+
         if Ocp > Omax:
-            Omax = Ocp
-            mu = cp
-            # print('new mu:', cp, Ocp, tn, cur)
+            Omax, mu = Ocp, cp
+            #print('new mu', cp, Ocp, tn, cur)
         
         # verification
         # the Ocpub in the condition is not updated
-        if tn < tnmax and Ocpub > Omax and len(cp) < K:
+        if tn < Tn and Ocpub > Omax and len(cp) < K:
 
             # When a new edge is added, if its weight Ld[e] is smaller than the cur-th top edge’s demand Ld(cur)
             # it means we can replace one top edge with the inserted one
@@ -251,7 +251,7 @@ if __name__ == '__main__':
                 if be_angle > pi/4:
                     tn += 1
                 if be_angle > pi/2:
-                    tn = tnmax
+                    tn = Tn
             
             if ee is not None:
                 ee_angle = computeAngle(
@@ -262,16 +262,28 @@ if __name__ == '__main__':
                 if ee_angle > pi/4:
                     tn += 1
                 if ee_angle > pi/2:
-                    tn = tnmax
+                    tn = Tn
             
-            if Ocp == Omax:
-                # if is mu
+            if Ocp == Omax: # is mu
                 mu_tn = tn
             
-            # domination checking and circle checking
+            # domination checking and circle checking and turn-number checking
             if Ocp > DT.get(frozenset((be, ee)), 0) and be != ee:
+
+                """
+                    the order of updating mu and tn are weird
+                    I think mu should be updated here and checked tn before it update
+                    like this:
+                """
+                # if tn < Tn:
+                #     if Ocp > Omax:
+                #         Omax, mu, mu_tn = Ocp, cp, tn
+                # else:
+                #     continue
+
                 DT[frozenset((be, ee))] = Ocp
                 # print('push:', Ocpub, cp, Ocp, tn, cur)
                 Q.push(Ocpub, cp, Ocp, tn, cur)
 
-    outputResult(mu, mu_tn, Omax, roadNet, transitNet, trajData, args.output_path)
+    if args.output_path:
+        outputResult(mu, mu_tn, Omax, roadNet, transitNet, trajData, args.output_path)
