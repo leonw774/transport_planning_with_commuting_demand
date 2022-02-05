@@ -12,12 +12,12 @@ def haversine(lon1, lat1, lon2, lat2):
     return c * r
 
 """
-input: 
-- latitude of point 1
-- latitude of point 2
-- longitude difference of point 1 and 2
-all angle are in radians
-output: initial bearing from point 1 to point 2, ranging from -PI to PI
+    input: 
+    - latitude of point 1
+    - latitude of point 2
+    - longitude difference of point 1 and 2
+    all angle are in radians
+    output: initial bearing from point 1 to point 2, ranging from -PI to PI
 """
 def bearing(lat1, lat2, dlong):
     y = sin(dlong) * cos(lat2)
@@ -27,11 +27,11 @@ def bearing(lat1, lat2, dlong):
     return theda
 
 """
-input: transit network and three transit network nodes, n1, n2, n3
-description:
-compute the angle between line n1->n2 and line n2->n3.
-the line of two nodes is a line that pass through the two nodes' geometrical location
-return: the angle in radian in [0, 2*PI) range
+    input: transit network and three transit network nodes, n1, n2, n3
+    description:
+    compute the angle between line n1->n2 and line n2->n3.
+    the line of two nodes is a line that pass through the two nodes' geometrical location
+    return: the angle in radian in [0, 2*PI) range
 """
 def computeAngle(point1, point2, point3) -> float:
     x1, y1 = point1

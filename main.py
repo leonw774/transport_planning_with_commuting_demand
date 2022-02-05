@@ -4,112 +4,76 @@ from math import pi
 import matplotlib.pyplot as plt
 from pq import MyPQ
 from geo import computeAngle
-from nets import getRoadNetwork, getTransitNetwork, getTrajectoryData, SortedEdgeDemandList, findNeighbors
+from nets import getRoadNetwork, getTransitNetwork, getTrajectoryData, findNeighbors
+from out import outputResult
 
 """
-input: road network, trajectory data
-side effect:
-- calculate and add 'demand' attribute to some of road network edges
+    to get edge by rank, use Ld.edges[rank]
+    to get demand by rank, use Ld.demands[rank]
+    to get demand by edge, use Ld.edge2d[edge]
+"""
+class SortedEdgeDemandList():
+    def __init__(self, unsorted_demand_edge_list, sn) -> None:
+        # list with descending demand value with limited length of sn
+        # each element is a tuple (edge, demand)
+        sortedlist = sorted(unsorted_demand_edge_list, key=lambda x: x[1], reverse=True)[:sn]
+        edge_tuple, demand_tuple = zip(*sortedlist)
+        self.edges = list(edge_tuple)
+        self.demands = list(demand_tuple)
+        self.edge2d = dict()
+        # because edge is undirected, tuple order shouldn't matter
+        # considered frozenset, but it has only has 2 element, so nah
+        for (u, v), demand in sortedlist:
+            self.edge2d[(u, v)] = demand
+            self.edge2d[(v, u)] = demand
+    
+    def __len__(self):
+        return len(self.edges)
+
+"""
+    input: road network, trajectory data
+    side effect:
+    - calculate and add 'demand', 'score' attribute to some of road network edges
 """
 def computeDemand(roadNet: nx.Graph, trajData: list):
+    # find road_length_max
+    road_length_max = max(roadNet.edges[u, v]['length'] for u, v in roadNet.edges())
+    
+    # find demands
     for traj in trajData:
         nodelist = traj[1].split(" ")
         for i in range(len(nodelist)-1):
             e = roadNet.edges[nodelist[i], nodelist[i+1]]
             e['demand'] = e.get('demand', 0) + 1
 
+    # find weighted demands
+    for u, v in roadNet.edges():
+        e = roadNet.edges[u, v]
+        if 'demand' in e:
+            # revised formula (2)
+            e['score'] = e['demand'] * (road_length_max - e['length']) * e['length']
+    
 """
-input: road network, transit network, seeding number
-side effects:
-- road_length_max: find and set to max
-- calculate and add 'weighted_demand' attribute the roadNet edges that has 'demand'
-reutrn:
-- Ld (SortedEdgeDemandList) with length limit of sn
+    input: road network, transit network, seeding number
+    side effects:
+    - calculate and add attribute the roadNet edges that has 'demand'
+    reutrn:
+    - Ld (SortedEdgeDemandList) with length limit of sn
+    - road_length_max
 """
 def getCandidateEdges(roadNet: nx.Graph, transitNet: nx.Graph, sn: int):
-    global road_length_max
-    # find road_length_max
-    for u, v in roadNet.edges():
-        l = roadNet.edges[u, v]['length'] # because every thing in road network is stored as string
-        if l > road_length_max:
-            road_length_max = l
-
     # it is assumed that if an edge represents, it means the two node are close within distance of tau
     edge_demand_list = [] # unsorted list
     for u, v, attr in transitNet.edges(data=True):
-        aggregated_weighted_demand = 0
+        aggregated_score = 0
         for i in range(len(attr['path'])-1):
             e = roadNet.edges[attr['path'][i], attr['path'][i+1]]
-            if 'weighted_demand' in e:
-                aggregated_weighted_demand += e['weighted_demand']
-            elif 'demand' in e:
-                # revised formula (2)
-                e['weighted_demand'] = e['demand'] * (road_length_max - e['length']) * e['length']
-                aggregated_weighted_demand += e['weighted_demand']
+            aggregated_score += e.get('score', 0)
 
-        edge_demand_tuple = ((u, v), aggregated_weighted_demand)
+        edge_demand_tuple = ((u, v), aggregated_score)
         edge_demand_list.append(edge_demand_tuple)
 
     return SortedEdgeDemandList(edge_demand_list, sn)
-
-"""
-to be re-implemented
-"""
-def outputResult(mu: list, mu_tn:int,  Omax: float, roadNet: nx.Graph, transitNet: nx.Graph, trajData: list, output_path: str):
-    # draw all roads
-    # darker means more demands
-    
-    max_demand = max([attr.get('demand', 0) for u, v, attr in roadNet.edges(data=True)])
-    for u, v, attr in roadNet.edges(data=True):
-        d = min(1.0, attr.get('demand', 0) / max_demand)
-        color = (0.0, 0.0, 0.0, d)
-        plt.plot(
-            [roadNet.nodes[u]['x'], roadNet.nodes[v]['x']],
-            [roadNet.nodes[u]['y'], roadNet.nodes[v]['y']],
-            '-',
-            color=color,
-            lw=1)
-
-    road_path = []
-    for i in range(len(mu)-1):
-        path = transitNet.edges[mu[i], mu[i+1]]['path']
-        fromnodes = transitNet.nodes[mu[i]]['road']
-        tonodes = transitNet.nodes[mu[i+1]]['road']
-        if path[0] in fromnodes:
-            road_path.extend(path)
-        else:
-            road_path.extend(reversed(path))
-
-    # draw bus line
-    prex = prey = None
-    for i, n in enumerate(road_path):
-        x, y = roadNet.nodes[n]['x'], roadNet.nodes[n]['y']
-        if prex is not None:
-            plt.plot([prex, x], [prey, y], '-r', lw=1)
-        prex, prey = x, y
-
-    # draw stops
-    for n in transitNet.nodes():
-        if n in mu:
-            i = mu.index(n)
-            if i >= 1 and i < len(mu) - 1:
-                angle = computeAngle(
-                    (transitNet.nodes[mu[i-1]]['x'], transitNet.nodes[mu[i-1]]['y']),
-                    (transitNet.nodes[mu[i]]['x'], transitNet.nodes[mu[i]]['y']),
-                    (transitNet.nodes[mu[i+1]]['x'], transitNet.nodes[mu[i+1]]['y']))
-                angle = round(angle, 2)
-            else:
-                angle = ''
-            plt.plot(transitNet.nodes[n]['x'], transitNet.nodes[n]['y'], 'sb', markersize=2)
-            plt.annotate(
-                f'#{i}\n{angle}', 
-                (transitNet.nodes[n]['x'], transitNet.nodes[n]['y']),
-                fontsize=8)
-        else:
-            plt.plot(transitNet.nodes[n]['x'], transitNet.nodes[n]['y'], 'sk', markersize=2)
-    
-    plt.suptitle(f'number of turns: {mu_tn} \n transit path: {mu} \n Omax: {Omax}')
-    plt.savefig(output_path+'.png')
 
 if __name__ == '__main__':
     parser = ArgumentParser()
@@ -128,11 +92,6 @@ if __name__ == '__main__':
                         type=str,
                         default='data/trajs.csv'
                         )
-    # parser.add_argument('--transit-is-preprocessed',
-    #                     dest='transit_is_preprocessed',
-    #                     type=bool,
-    #                     default=True
-    #                     )
     parser.add_argument('--tau',
                         dest='tau',
                         type=float,
@@ -183,16 +142,12 @@ if __name__ == '__main__':
     it = 0                              # iteration counter
     itmax = args.itmax                  # limit of iteration
     tnmax = args.tnmax                  # threshold for number of turns
-    road_length_max = 0                 # max road length in road network
 
     ######## PRE-PROCESS
 
     computeDemand(roadNet, trajData)
 
-    # if args.transit_is_preprocessed is False:
-    #     findNeighbors(transitNet, roadNet, args.tau)
-
-    ######## Algorithm: ETA
+    ######## Expansion-based Traversal Algorithm (ETA)
 
     #### initialization phase
 
@@ -200,12 +155,11 @@ if __name__ == '__main__':
     K = min(len(Ld), K)
 
     # calculate dmax
-    for i in range(K):
-        dmax += Ld.demands[i]
+    dmax = sum(Ld.demands[:K])
 
     # because no connectivity involved, Omax == Odmax
     Omax = Ld.demands[0] / dmax
-    mu = [*Ld.edges[0]]
+    mu = [*Ld.edges[0]] # tuple unpacking
 
     # push path seeds into Q
     for i, e in enumerate(Ld.edges):
@@ -245,17 +199,23 @@ if __name__ == '__main__':
         ee, maxd_ee = result[1]
         
         # update best path
+
         if be is None and ee is None:
-            # I don't why but this happen
             continue
-        
+        # yeah this happens
         # sometime you just can't find new edge?
         if be is not None:
             cp = [be] + cp
         if ee is not None:
             cp = cp + [ee]
+
+        # be == ee is allowed to happen
+        # but it also means it can not be further expanded because it's now a circle 
+        if be == ee:
+            Ocp = maxd_be / dmax + Ocp
+        else:
+            Ocp = (maxd_be + maxd_ee) / dmax + Ocp
         
-        Ocp = (maxd_be + maxd_ee) / dmax + Ocp
         if Ocp > Omax:
             Omax = Ocp
             mu = cp

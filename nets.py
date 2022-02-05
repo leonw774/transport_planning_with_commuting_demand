@@ -3,7 +3,11 @@ import pandas as pd
 from geo import haversine
 
 """
-When read in from graphml file, every attribute is string, so have to convert
+    methods here might going to be re-implemented
+"""
+
+"""
+    When read in from graphml file, every attribute is string, so have to convert
 """
 
 def getRoadNetwork(path: str) -> nx.Graph:
@@ -32,36 +36,14 @@ def getTransitNetwork(path: str) -> nx.Graph:
     return Gr
 
 """
-Trajectory Data is a list of two-element lists: [[id1,  trajectory1], [id2,  trajectory2], ..., [idn,  trajectoryn]]
-- id: int
-- trajectory: string of road network node ids seperated by space
-- road network node id: string composed of digits
+    Trajectory Data is a list of two-element lists: [[id1,  trajectory1], [id2,  trajectory2], ..., [idn,  trajectoryn]]
+    - id: int
+    - trajectory: string of road network node ids seperated by space
+    - road network node id: string composed of digits
 """
 def getTrajectoryData(path: str) -> list:
     return pd.read_csv(path).to_dict('split')['data']
 
-"""
-to get edge by rank, use Ld.edges[rank]
-to get demand by rank, use Ld.demands[rank]
-to get demand by edge, use Ld.edge2d[edge]
-"""
-class SortedEdgeDemandList():
-    def __init__(self, unsorted_demand_edge_list, sn) -> None:
-        # list with descending demand value with limited length of sn
-        # each element is a tuple (edge, demand)
-        sortedlist = sorted(unsorted_demand_edge_list, key=lambda x: x[1], reverse=True)[:sn]
-        edge_tuple, demand_tuple = zip(*sortedlist)
-        self.edges = list(edge_tuple)
-        self.demands = list(demand_tuple)
-        self.edge2d = dict()
-        # because edge is undirected, the tuple order shouldn't matter
-        # considered frozenset, but it has only has 2 element, so nah
-        for (u, v), demand in sortedlist:
-            self.edge2d[(u, v)] = demand
-            self.edge2d[(v, u)] = demand
-    
-    def __len__(self):
-        return len(self.edges)
 
 """
     find the shortest path between the two road segments its two nodes represent on the road network.
@@ -91,10 +73,10 @@ def findshortestPath(road1: tuple, road2: tuple, roadNet: nx.Graph):
     return path_string
 
 """
-input: transit network, road network, tau
-side effect:
-- add edge between every node pair that their distance is less than or equal to tau
-- for each edge, find shortest path on road network, and add 'path' attribute to it
+    input: transit network, road network, tau
+    side effect:
+    - add edge between every node pair that their distance is less than or equal to tau
+    - for each edge, find shortest path on road network, and add 'path' attribute to it
 """
 def findNeighbors(transitNet: nx.Graph, roadNet: nx.Graph, tau: float):
     checked = set()

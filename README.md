@@ -43,7 +43,7 @@ Attributes:
 - Edge
   - `length`: 路段的長度。
   - `demand`: Trajectory Data進來後，會計算所有trajectory中有幾個包含這個edge，結果會存在這個attribute裡。這可以加快(2)式的計算。也就是下式中的$n_e$
-  - `weighted_demand`: 將自己(這個edge)代入(2)式計算後的結果。
+  - `score`: 將自己(這個edge)代入新的(2)式計算後的結果。
   - $e_i[\text{weighted demand}] = O_d(e_i)$
 
 $$ \begin{aligned}
@@ -75,3 +75,51 @@ Attributes:
 Trajectory Data是非公車的通勤記錄(paper裡用的是計程車)的集合，用以表示人群的通勤需求。每一筆trajectory都是Road Netowork上的一個路徑。
 
 Trajectory Data的格式預設是一個csv檔，有兩個column：`id`和`trajectory`。`id`是每一筆的編號，`trajectory`則和Transit Network的edge的`path`一樣，是以空白分隔的一串node id。
+
+## 實作細節
+
+- dataset的讀取/前處理
+- 臨時的測試用dataset
+- 主要演算法
+- 輸出結果
+- 其他
+
+### dataset的讀取/前處理
+
+因為測試時用的自產dataset直接就符合自己設計的資料格式(就上個section寫的東西)，不需要什麼處理。等實際的dataset來了之後看情況，如果轉換不麻煩，就直接讓資料進來之後轉成自己的格式，(然後`geo.py`裡的code可能也要改)。這樣主要演算法部份的就不用更改。如果轉換很麻煩那就再說。
+
+### 臨時的測試用dataset
+
+要測試的話只能臨時自產dataset，整個`maketestdata.py`就是做這個的。
+
+因為自產dataset會需要用到，所以寫了`findshortestPath`和`findNeighbors`。考慮到transit network的neighbors以及它們之間的shortest path這些資訊dataset可能不會給，而是要自己找，所以這兩個放在`nets.py`裡面。
+
+
+## 主要演算法
+
+跟主要演算法有關的code都在`main.py`裡
+
+### 1. 前處理: 計算"demand"和"score"
+
+因為「轉換機制」，反正它就是某個公式算出來分數。由`computeDemand`處理，給road network加上"demand"和"score"。
+
+### 2. Initialization
+
+`getCandidateEdges`回傳$L_d$，因為不考慮connetivity，它同時也是$L_e$。我寫了一個class `SortedEdgeDemandList`來包它。
+
+$K$設為transit network的node數量和candidate edges的總數取最小值。
+
+Priority queue也寫了一個class `MyPQ`包住，在`pq.py`。
+
+### 3. Expansion
+
+進while loop後開始expansion，因為不考慮connectivity的關係，每一次expansion就是在鄰居中找在$L_d$裡面排最前的那個
+
+一些狀況：
+- 會發生beginning edge和ending edge是同一個的狀況，根據paper第3頁的註解4，頭尾相連的環形路線是允許的。所以`be == ee`的路線可作為$\mu$的候選路線，但不能expand。
+- `computeAngle`是計算路線最未端的三個站點的實際地理位置依順序連接的兩個折線之間的夾角
+- 與計算夾角和距離有關的函數(包含`computeAngle`)都放在`geo.py`，而因為我用的臨時自產dataset提供的坐標是經緯度，所以目前實作的內容都是當球面在算。實際的dataset來了之後看情況會再改。
+
+### 4. 輸出與視覺化
+
+`out.py`裡的`outputResult`，測試時為了能較好看出程式問題而讓它輸出圖片。實際的輸出格式還待後續要求。
