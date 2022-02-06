@@ -1,5 +1,7 @@
 # Transport Planning with Commuting Demand
 
+https://github.com/leonw774/transport_planning_with_commuting_demand
+
 [TOC]
 
 ## 與paper不同的地方
@@ -116,7 +118,7 @@ Priority queue實作在`pq.py`的`MyPQ`。
 
 一些狀況：
 - 會發生beginning edge和ending edge是同一個的狀況，根據paper第3頁的註解4，頭尾相連的環形路線是允許的。目前的設計是`be == ee`的路線可作為$\mu$的候選路線，但不能expand。
-- 為簡單起見，`computeAngle`是計算路線最未端的三個站點的實際地理位置依順序連接的兩個折線之間的夾角
+- 為簡單起見，`computeAngle`是計算路線最未端的三個站點的實際地理位置依順序連接形成的兩個向量(也就是`stop[0] -> stop[1]`和`stop[1] -> stop[2]`)的角度差。
 - 與計算夾角和距離有關的函數(包含`computeAngle`)都放在`geo.py`，而因為我用的臨時自產dataset提供的坐標是經緯度，所以目前實作的內容都是當球面在算。實際的dataset來了之後看情況會再改。
 - paper給的algorithm裡面，$tn(cp)$和$\mu$的更新的先後順序很奇怪？它先更新$\mu$，然後檢查$tn(cp) < Tn$後進入verification，然後在verification**裡面**才更新$tn(cp)$。但因為它一次expand兩端，所以假設原本$tn(cp) = Tn-1$，然後expand的兩端都+1，這樣push到Q裡面的時候已經是$Tn+1$了。等到它pop出來時還可以再兩端expand一次，這樣$\mu$的候選路徑會出現$tn(cp) = Tn+3$的情況
 - 我目前把順序改成: 更新$\mu$ -> 更新$tn(cp)$ -> 檢查$tn(cp) < Tn$ -> verification
