@@ -7,12 +7,13 @@ from geo import computeAngle
     to be re-implemented
 """
 def outputResult(mu: list, mu_tn:int,  Omax: float, roadNet: nx.Graph, transitNet: nx.Graph, trajData: list, output_path: str):
-    
+    plt.axis('off')
+
     # draw all roads
     # darker means more demands
     max_demand = max([attr.get('demand', 0) for u, v, attr in roadNet.edges(data=True)])
     for u, v, attr in roadNet.edges(data=True):
-        d = max(min(1.0, attr.get('demand', 0) / max_demand), 0.05)
+        d = max(min(1.0, attr.get('demand', 0) / max_demand), 0.025)
         color = (0.0, 0.0, 0.0, d)
         plt.plot(
             [roadNet.nodes[u]['x'], roadNet.nodes[v]['x']],
@@ -57,7 +58,7 @@ def outputResult(mu: list, mu_tn:int,  Omax: float, roadNet: nx.Graph, transitNe
                 (transitNet.nodes[n]['x'], transitNet.nodes[n]['y']),
                 fontsize=8)
         else:
-            plt.plot(transitNet.nodes[n]['x'], transitNet.nodes[n]['y'], 'sg', markersize=2)
+            plt.plot(transitNet.nodes[n]['x'], transitNet.nodes[n]['y'], 'sg', markersize=1)
     
     plt.suptitle(f'number of turns: {mu_tn} \n transit path: {mu} \n Omax: {Omax}')
     plt.savefig(output_path+'.png')

@@ -80,9 +80,9 @@ def makeTestTrajectoryData(roadNet, number):
     return trajs
 
 if __name__ == "__main__":
-    RSIZE = 2000     # dist for road network
-    NS = 150         # number of bus stops
-    NT = 100         # number of trajectories
+    RSIZE = 3000     # dist for road network
+    NS = 400         # number of bus stops
+    NT = 200         # number of trajectories
     TAU = 500        # distance in meter
     print('tau =', TAU)
     G = makeTestRoadNet((25.0460, 121.5200), RSIZE, 'data/road.graphml')

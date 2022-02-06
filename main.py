@@ -123,6 +123,8 @@ if __name__ == '__main__':
                         help='output file path. set to empty string (-o=\'\') to disable output'
                         )        
     args = parser.parse_args()
+
+    print(f' road:{args.road_path}\n trasnit:{args.transit_path}\n trajs:{args.traj_path}\n output:{args.output_path}')
     
     ######## GET INPUT
 
@@ -147,6 +149,8 @@ if __name__ == '__main__':
     ######## PRE-PROCESS
 
     computeDemand(roadNet, trajData)
+
+    print(f' K:{K}\n itmax:{itmax}\n Tn:{Tn}\n sn:{args.sn}')
 
     ######## Expansion-based Traversal Algorithm (ETA)
 
@@ -221,6 +225,32 @@ if __name__ == '__main__':
             Omax, mu = Ocp, cp
             #print('new mu', cp, Ocp, tn, cur)
         
+        # update turn number
+        if be is not None:
+            be_angle = computeAngle(
+                (transitNet.nodes[cp[0]]['x'], transitNet.nodes[cp[0]]['y']),
+                (transitNet.nodes[cp[1]]['x'], transitNet.nodes[cp[1]]['y']),
+                (transitNet.nodes[cp[2]]['x'], transitNet.nodes[cp[2]]['y']))
+            # print(be_angle)
+            if be_angle > pi/4:
+                tn += 1
+            if be_angle > pi/2:
+                tn = Tn
+        
+        if ee is not None:
+            ee_angle = computeAngle(
+                (transitNet.nodes[cp[-1]]['x'], transitNet.nodes[cp[-1]]['y']),
+                (transitNet.nodes[cp[-2]]['x'], transitNet.nodes[cp[-2]]['y']),
+                (transitNet.nodes[cp[-3]]['x'], transitNet.nodes[cp[-3]]['y']))
+            # print(ee_angle)
+            if ee_angle > pi/4:
+                tn += 1
+            if ee_angle > pi/2:
+                tn = Tn
+        
+        if Ocp == Omax: # is mu
+            mu_tn = tn
+        
         # verification
         # the Ocpub in the condition is not updated
         if tn < Tn and Ocpub > Omax and len(cp) < K:
@@ -241,46 +271,8 @@ if __name__ == '__main__':
                 Ocpub -= (Ld.demands[cur] + bigger)  / dmax
                 cur -= 1
             
-            # update turn number
-            if be is not None:
-                be_angle = computeAngle(
-                    (transitNet.nodes[cp[0]]['x'], transitNet.nodes[cp[0]]['y']),
-                    (transitNet.nodes[cp[1]]['x'], transitNet.nodes[cp[1]]['y']),
-                    (transitNet.nodes[cp[2]]['x'], transitNet.nodes[cp[2]]['y']))
-                # print(be_angle)
-                if be_angle > pi/4:
-                    tn += 1
-                if be_angle > pi/2:
-                    tn = Tn
-            
-            if ee is not None:
-                ee_angle = computeAngle(
-                    (transitNet.nodes[cp[-1]]['x'], transitNet.nodes[cp[-1]]['y']),
-                    (transitNet.nodes[cp[-2]]['x'], transitNet.nodes[cp[-2]]['y']),
-                    (transitNet.nodes[cp[-3]]['x'], transitNet.nodes[cp[-3]]['y']))
-                # print(ee_angle)
-                if ee_angle > pi/4:
-                    tn += 1
-                if ee_angle > pi/2:
-                    tn = Tn
-            
-            if Ocp == Omax: # is mu
-                mu_tn = tn
-            
-            # domination checking and circle checking and turn-number checking
+            # domination checking and circle checking
             if Ocp > DT.get(frozenset((be, ee)), 0) and be != ee:
-
-                """
-                    the order of updating mu and tn are weird
-                    I think mu should be updated here and checked tn before it update
-                    like this:
-                """
-                # if tn < Tn:
-                #     if Ocp > Omax:
-                #         Omax, mu, mu_tn = Ocp, cp, tn
-                # else:
-                #     continue
-
                 DT[frozenset((be, ee))] = Ocp
                 # print('push:', Ocpub, cp, Ocp, tn, cur)
                 Q.push(Ocpub, cp, Ocp, tn, cur)
