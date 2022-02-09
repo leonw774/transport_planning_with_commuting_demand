@@ -46,7 +46,7 @@ Attributes:
   - `length`: 路段的長度。
   - `demand`: Trajectory Data進來後，會計算所有trajectory中有幾個包含這個edge，結果會存在這個attribute裡。這可以加快(2)式的計算。也就是下式中的$n_e$
   - `score`: 將自己(這個edge)代入新的(2)式計算後的結果。
-  - $e_i[\text{weighted demand}] = O_d(e_i)$
+  - $e_i[\text{score}] = O_d(e_i)$
 
 $$ \begin{aligned}
     O_d(\mu) & = \sum_{T_i \in D} \sum_{e \in T_i \cap \mu} |e| (max_{e' \in E}(|e'|) - |e|) \\

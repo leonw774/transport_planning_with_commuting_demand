@@ -55,11 +55,8 @@ def computeDemand(roadNet: nx.Graph, trajData: list):
     
 """
     input: road network, transit network, seeding number
-    side effects:
-    - calculate and add attribute the roadNet edges that has 'demand'
     reutrn:
     - Ld (SortedEdgeDemandList) with length limit of sn
-    - road_length_max
 """
 def getCandidateEdges(roadNet: nx.Graph, transitNet: nx.Graph, sn: int):
     # it is assumed that if an edge represents, it means the two node are close within distance of tau
