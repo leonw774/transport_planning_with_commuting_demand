@@ -1,7 +1,6 @@
 from argparse import ArgumentParser 
 import networkx as nx
 from math import pi
-import matplotlib.pyplot as plt
 from pq import MyPQ
 from geo import computeAngle
 from nets import getRoadNetwork, getTransitNetwork, getTrajectoryData, findNeighbors
@@ -12,11 +11,11 @@ from out import outputResult
     to get demand by rank, use Ld.demands[rank]
     to get demand by edge, use Ld.edge2d[edge]
 """
-class SortedEdgeDemandList():
-    def __init__(self, unsorted_demand_edge_list, sn) -> None:
+class SortedEdgeScoreList():
+    def __init__(self, unsorted_score_edge_list, sn) -> None:
         # list with descending demand value with limited length of sn
         # each element is a tuple (edge, demand)
-        sortedlist = sorted(unsorted_demand_edge_list, key=lambda x: x[1], reverse=True)[:sn]
+        sortedlist = sorted(unsorted_score_edge_list, key=lambda x: x[1], reverse=True)[:sn]
         edge_tuple, demand_tuple = zip(*sortedlist)
         self.edges = list(edge_tuple)
         self.demands = list(demand_tuple)
@@ -31,70 +30,56 @@ class SortedEdgeDemandList():
         return len(self.edges)
 
 """
-    input: road network, trajectory data
+    input: road network
     side effect:
-    - calculate and add 'demand', 'score' attribute to some of road network edges
+    - calculate and add 'score' attribute to some of road network edges
 """
-def computeDemand(roadNet: nx.Graph, trajData: list):
+def computeScore(roadNet: nx.Graph):
     # find road_length_max
     road_length_max = max(roadNet.edges[u, v]['length'] for u, v in roadNet.edges())
-    
-    # find demands
-    for traj in trajData:
-        nodelist = traj[1].split(" ")
-        for i in range(len(nodelist)-1):
-            e = roadNet.edges[nodelist[i], nodelist[i+1]]
-            e['demand'] = e.get('demand', 0) + 1
 
-    # find weighted demands
+    # find score
     for u, v in roadNet.edges():
         e = roadNet.edges[u, v]
-        if 'demand' in e:
-            # revised formula (2)
-            e['score'] = e['demand'] * (road_length_max - e['length']) * e['length']
+        # revised formula (2)
+        e['score'] = (road_length_max - e['length']) * e['length']
     
 """
     input: road network, transit network, seeding number
     reutrn:
-    - Ld (SortedEdgeDemandList) with length limit of sn
+    - Ld (SortedEdgeScoreList) with length limit of sn
 """
-def getCandidateEdges(roadNet: nx.Graph, transitNet: nx.Graph, sn: int):
+def getCandidateEdges(roadNet: nx.Graph, sn: int):
     # it is assumed that if an edge represents, it means the two node are close within distance of tau
-    edge_demand_list = [] # unsorted list
-    for u, v, attr in transitNet.edges(data=True):
-        aggregated_score = 0
-        for i in range(len(attr['path'])-1):
-            e = roadNet.edges[attr['path'][i], attr['path'][i+1]]
-            aggregated_score += e.get('score', 0)
+    edge_score_list = [] # unsorted list
+    for u, v, attr in roadNet.edges(data=True):
+        edge_score_tuple = ((u, v), attr['score'])
+        edge_score_list.append(edge_score_tuple)
 
-        edge_demand_tuple = ((u, v), aggregated_score)
-        edge_demand_list.append(edge_demand_tuple)
-
-    return SortedEdgeDemandList(edge_demand_list, sn)
+    return SortedEdgeScoreList(edge_score_list, sn)
 
 if __name__ == '__main__':
     parser = ArgumentParser()
-    parser.add_argument('--road-path',
-                        dest='road_path',
-                        type=str,
-                        default='data/road.graphml'
+    parser.add_argument('--input-path',
+                        dest='input_path',
+                        type=str
                         )
-    parser.add_argument('--transit-path',
-                        dest='transit_path',
-                        type=str,
-                        default='data/transit.graphml'
-                        )
-    parser.add_argument('--trajectory-path',
-                        dest='traj_path',
-                        type=str,
-                        default='data/trajs.csv'
-                        )
-    parser.add_argument('--tau',
-                        dest='tau',
-                        type=float,
-                        default=500,
-                        help='threshold for neighbor distance in meters. if transit is prepocessed, this does not matter.'
-                        )
+    # parser.add_argument('--transit-path',
+    #                     dest='transit_path',
+    #                     type=str,
+    #                     default='data/transit.graphml'
+    #                     )
+    # parser.add_argument('--trajectory-path',
+    #                     dest='traj_path',
+    #                     type=str,
+    #                     default='data/trajs.csv'
+    #                     )
+    # parser.add_argument('--tau',
+    #                     dest='tau',
+    #                     type=float,
+    #                     default=500,
+    #                     help='threshold for neighbor distance in meters. if transit is prepocessed, this does not matter.'
+    #                     )
     parser.add_argument('--tn', '--turn-number',
                         dest='tnmax',
                         type=int,
@@ -121,19 +106,19 @@ if __name__ == '__main__':
                         )        
     args = parser.parse_args()
 
-    print(f' road:{args.road_path}\n trasnit:{args.transit_path}\n trajs:{args.traj_path}\n output:{args.output_path}')
+    print(f' input:{args.input_path}\n output:{args.output_path}')
     
     ######## GET INPUT
 
-    roadNet = getRoadNetwork(args.road_path)
-    transitNet = getTransitNetwork(args.transit_path)
-    trajData = getTrajectoryData(args.traj_path)
+    roadNet = getRoadNetwork(args.input_path)
+    # transitNet = getTransitNetwork(args.transit_path)
+    # trajData = getTrajectoryData(args.traj_path)
 
     ######## GLOBAL VARIABLE INITIALIZATION 
 
     Q = MyPQ()                                  # priority queue
     DT = dict()                                 # domination table
-    K = transitNet.number_of_nodes()            # maximum number of node in final path
+    K = roadNet.number_of_nodes()               # maximum number of node in final path
     Ld = None                                   # list of edges sorted in descending order base on their demand 
     dmax = 0                                    # largest possible demand value
     mu = list()                                 # best path so far, is a list of nodes
@@ -145,7 +130,7 @@ if __name__ == '__main__':
 
     ######## PRE-PROCESS
 
-    computeDemand(roadNet, trajData)
+    computeScore(roadNet)
 
     print(f' K:{K}\n itmax:{itmax}\n Tn:{Tn}\n sn:{args.sn}')
 
@@ -153,7 +138,7 @@ if __name__ == '__main__':
 
     #### initialization phase
 
-    Ld = getCandidateEdges(roadNet, transitNet, args.sn)
+    Ld = getCandidateEdges(roadNet, args.sn)
     K = min(len(Ld), K)
 
     # calculate dmax
@@ -188,7 +173,7 @@ if __name__ == '__main__':
         for end_node in [cp[0], cp[-1]]:
             e = None
             maxd_e = 0
-            for v in transitNet.neighbors(end_node):
+            for v in roadNet.neighbors(end_node):
                 if (end_node, v) in Ld.edge2d and v not in cp:
                     # p = e + cp
                     # O(p) = Od(p)/dmax = (Od(e) + Od(cp))/dmax = Ld[e]/dmax + O(cp)
@@ -225,9 +210,9 @@ if __name__ == '__main__':
         # update turn number
         if be is not None:
             be_angle = computeAngle(
-                (transitNet.nodes[cp[0]]['x'], transitNet.nodes[cp[0]]['y']),
-                (transitNet.nodes[cp[1]]['x'], transitNet.nodes[cp[1]]['y']),
-                (transitNet.nodes[cp[2]]['x'], transitNet.nodes[cp[2]]['y']))
+                cp[0],
+                cp[1],
+                cp[2])
             # print(be_angle)
             if be_angle > pi/4:
                 tn += 1
@@ -236,9 +221,9 @@ if __name__ == '__main__':
         
         if ee is not None:
             ee_angle = computeAngle(
-                (transitNet.nodes[cp[-1]]['x'], transitNet.nodes[cp[-1]]['y']),
-                (transitNet.nodes[cp[-2]]['x'], transitNet.nodes[cp[-2]]['y']),
-                (transitNet.nodes[cp[-3]]['x'], transitNet.nodes[cp[-3]]['y']))
+                cp[-1],
+                cp[-2],
+                cp[-3])
             # print(ee_angle)
             if ee_angle > pi/4:
                 tn += 1
@@ -275,4 +260,4 @@ if __name__ == '__main__':
                 Q.push(Ocpub, cp, Ocp, tn, cur)
 
     if args.output_path:
-        outputResult(mu, mu_tn, Omax, roadNet, transitNet, trajData, args.output_path)
+        outputResult(mu, mu_tn, Omax, roadNet, args.output_path)

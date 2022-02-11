@@ -1,48 +1,36 @@
 import networkx as nx
 import pandas as pd
-from geo import haversine
+# from geo import haversine
+from math import sqrt
 
 """
-    methods here might going to be re-implemented
+    A node is a two-integer tuple
 """
-
-"""
-    When read in from graphml file, every attribute is string, so have to convert
-"""
-
 def getRoadNetwork(path: str) -> nx.Graph:
-    G = nx.read_graphml(path)
-    for n in G.nodes:
-        G.nodes[n]['x'] = float(G.nodes[n]['x'])
-        G.nodes[n]['y'] = float(G.nodes[n]['y'])
-    for eid in G.edges:
-        G.edges[eid]['length'] = float(G.edges[eid]['length'])
-    return G
-
-def getTransitNetwork(path: str) -> nx.Graph:
-    Gr = nx.read_graphml(path)
-    for n in Gr.nodes:
-        # try eval
-        # eval can be evil, be careful
-        evaled_road_attr = eval(Gr.nodes[n]['road'])
-        if isinstance(evaled_road_attr, tuple) and len(evaled_road_attr) == 2:
-            # node index of road network is string
-            if isinstance(evaled_road_attr[0], str) and isinstance(evaled_road_attr[1], str):
-                Gr.nodes[n]['road'] = evaled_road_attr
-    
-    for e in Gr.edges:
-        Gr.edges[e]['path'] = Gr.edges[e]['path'].split(' ')
-
-    return Gr
+    G = nx.Graph()
+    with open(path, 'r', encoding='utf-8') as f:
+        l = f.read().split('---\n')[1:]
+    for e in l:
+        n1, n2, v = e.split('\n')[:3]
+        n1 = tuple(map(int, n1.split()))
+        n2 = tuple(map(int, n2.split()))
+        G.add_node(n1, x=n1[0], y=n1[1])
+        G.add_node(n2, x=n2[0], y=n2[1])
+        v = v.split()
+        G.add_edge(n1, n2, length=sqrt(int(v[0]) ** 2 + int(v[1]) ** 2))
+        
+"""
+    transit network equals road network
+"""
+def getTransitNetwork(road: nx.Graph):
+    pass
 
 """
-    Trajectory Data is a list of two-element lists: [[id1,  trajectory1], [id2,  trajectory2], ..., [idn,  trajectoryn]]
-    - id: int
-    - trajectory: string of road network node ids seperated by space
-    - road network node id: string composed of digits
+    Trajectory Data is unused.
+    road edge demand is all 1
 """
-def getTrajectoryData(path: str) -> list:
-    return pd.read_csv(path).to_dict('split')['data']
+def getTrajectoryData(path: str):
+    pass
 
 
 """
@@ -50,7 +38,7 @@ def getTrajectoryData(path: str) -> list:
     the path will include the beginning and ending road segment as it is a undirected graph
     the result will store in the attribute `path` of each edge as a list of road network edge id 
 """
-def findshortestPath(road1: tuple, road2: tuple, roadNet: nx.Graph):
+""" def findshortestPath(road1: tuple, road2: tuple, roadNet: nx.Graph):
     # there are four combination of start and ending node between two undirected edge
     lengths = [
         nx.shortest_path_length(roadNet, road1[0], road2[0], weight='length'),
@@ -71,6 +59,7 @@ def findshortestPath(road1: tuple, road2: tuple, roadNet: nx.Graph):
     r2__nid = '' if road1[r1_] in path else (' ' + road2[r2_])
     path_string = r1__nid + ' '.join(path) + r2__nid
     return path_string
+"""
 
 """
     input: transit network, road network, tau
@@ -78,7 +67,7 @@ def findshortestPath(road1: tuple, road2: tuple, roadNet: nx.Graph):
     - add edge between every node pair that their distance is less than or equal to tau
     - for each edge, find shortest path on road network, and add 'path' attribute to it
 """
-def findNeighbors(transitNet: nx.Graph, roadNet: nx.Graph, tau: float):
+""" def findNeighbors(transitNet: nx.Graph, roadNet: nx.Graph, tau: float):
     checked = set()
     for ni, attri in transitNet.nodes(data=True):
         for nj, attrj in transitNet.nodes(data=True):
@@ -88,3 +77,4 @@ def findNeighbors(transitNet: nx.Graph, roadNet: nx.Graph, tau: float):
             if haversine(attri['x'], attri['y'], attrj['x'], attrj['y']) < tau:
                 pathstring = findshortestPath(transitNet.nodes[ni]['road'], transitNet.nodes[nj]['road'], roadNet)
                 transitNet.add_edge(ni, nj, path=pathstring)
+"""

@@ -1,4 +1,4 @@
-from math import pi, radians, sin, cos, atan2, asin, sqrt
+from math import pi, radians, sin, cos, atan2, asin, acos, sqrt, dist
 
 def haversine(lon1, lat1, lon2, lat2):
     # convert decimal degrees to radians 
@@ -33,6 +33,22 @@ def bearing(lat1, lat2, dlong):
     return: the angle in radian in [0, PI] range
 """
 def computeAngle(point1, point2, point3) -> float:
+    x1, y1 = point1
+    x2, y2 = point2
+    x3, y3 = point3
+    # vector a
+    xa, ya = x2 - x1, y2 - y1
+    # vector b
+    xb, yb = x3 - x2, y3 - y2
+    # inner product ab
+    iab = xa * xb + ya * yb
+    theda = acos(iab / (dist(point2, point1) * dist(point3, point2)))
+    return theda
+
+"""
+    Same as compute angle but on sphere
+"""
+def computeAngleSpherical(point1, point2, point3) -> float:
     x1, y1 = point1
     x2, y2 = point2
     x3, y3 = point3
