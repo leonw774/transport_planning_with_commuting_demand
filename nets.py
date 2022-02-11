@@ -18,6 +18,10 @@ def getRoadNetwork(path: str) -> nx.Graph:
         G.add_node(n2, x=n2[0], y=n2[1])
         v = v.split()
         G.add_edge(n1, n2, length=sqrt(int(v[0]) ** 2 + int(v[1]) ** 2))
+    
+    # keep only the largest connected component
+    largest_cc = max(nx.connected_components(G), key=len)
+    return G.subgraph(largest_cc)
         
 """
     transit network equals road network
@@ -38,7 +42,7 @@ def getTrajectoryData(path: str):
     the path will include the beginning and ending road segment as it is a undirected graph
     the result will store in the attribute `path` of each edge as a list of road network edge id 
 """
-""" def findshortestPath(road1: tuple, road2: tuple, roadNet: nx.Graph):
+""" def findShortestPath(road1: tuple, road2: tuple, roadNet: nx.Graph):
     # there are four combination of start and ending node between two undirected edge
     lengths = [
         nx.shortest_path_length(roadNet, road1[0], road2[0], weight='length'),
@@ -75,6 +79,6 @@ def getTrajectoryData(path: str):
                 continue
             checked.add(frozenset([ni, nj]))
             if haversine(attri['x'], attri['y'], attrj['x'], attrj['y']) < tau:
-                pathstring = findshortestPath(transitNet.nodes[ni]['road'], transitNet.nodes[nj]['road'], roadNet)
+                pathstring = findShortestPath(transitNet.nodes[ni]['road'], transitNet.nodes[nj]['road'], roadNet)
                 transitNet.add_edge(ni, nj, path=pathstring)
 """

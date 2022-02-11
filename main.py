@@ -3,7 +3,7 @@ import networkx as nx
 from math import pi
 from pq import MyPQ
 from geo import computeAngle
-from nets import getRoadNetwork, getTransitNetwork, getTrajectoryData, findNeighbors
+from nets import getRoadNetwork, getTransitNetwork, getTrajectoryData
 from out import outputResult
 
 """
@@ -80,7 +80,7 @@ if __name__ == '__main__':
     #                     default=500,
     #                     help='threshold for neighbor distance in meters. if transit is prepocessed, this does not matter.'
     #                     )
-    parser.add_argument('--tn', '--turn-number',
+    parser.add_argument('--tnmax', '--turn-number-limit',
                         dest='tnmax',
                         type=int,
                         default=3,
@@ -90,13 +90,13 @@ if __name__ == '__main__':
                         dest='sn',
                         type=int,
                         default=5000,
-                        help='\"we choose top-sn edges in the list L_e as initial seeding path\"'
+                        help='use top-sn edges in the list L_e as initial seeding path, set -1 to be unlimited'
                         )
     parser.add_argument('--itmax', '--iteration-limit',
                         dest='itmax',
                         type=int,
                         default=1000000,
-                        help='limit of iteration'
+                        help='limit of iteration, set -1 to be unlimited'
                         )
     parser.add_argument('--output-path', '-o',
                         dest='output_path',
@@ -113,6 +113,8 @@ if __name__ == '__main__':
     roadNet = getRoadNetwork(args.input_path)
     # transitNet = getTransitNetwork(args.transit_path)
     # trajData = getTrajectoryData(args.traj_path)
+
+    print(f' road network has {roadNet.number_of_nodes()} nodes and {roadNet.number_of_edges()} edges')
 
     ######## GLOBAL VARIABLE INITIALIZATION 
 
@@ -163,7 +165,7 @@ if __name__ == '__main__':
     while Q:
         Ocpub, cp, Ocp, tn, cur = Q.pop()
         # print(it, 'pop:', Ocpub, cp, Ocp, tn, cur)
-        if Ocpub < Omax or it >= itmax:
+        if Ocpub < Omax or (it >= itmax or itmax == -1):
             break
         it += 1
 
@@ -235,7 +237,7 @@ if __name__ == '__main__':
         
         # verification
         # the Ocpub in the condition is not updated
-        if tn < Tn and Ocpub > Omax and len(cp) < K:
+        if (tn < Tn or Tn == -1) and Ocpub > Omax and len(cp) < K:
 
             # When a new edge is added, if its weight Ld[e] is smaller than the cur-th top edge’s demand Ld(cur)
             # it means we can replace one top edge with the inserted one
