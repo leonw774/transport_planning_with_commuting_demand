@@ -6,7 +6,7 @@ from geo import computeAngle
 """
     to be re-implemented
 """
-def outputResult(mu: list, mu_tn:int,  Omax: float, roadNet: nx.Graph, output_path: str):
+def outputResult(mu: list, mu_tn:int,  Omax: float, roadNet: nx.Graph, args):
     plt.axis('off')
 
     # draw all roads
@@ -32,31 +32,29 @@ def outputResult(mu: list, mu_tn:int,  Omax: float, roadNet: nx.Graph, output_pa
 
     # draw stops
     for n in roadNet.nodes():
-        if n in mu:
-            i = mu.index(n)
-            angle = ''
-
-            # if i >= 1 and i < len(mu) - 1:
-            #     angle = computeAngle(
-            #         mu[i-1],
-            #         mu[i],
-            #         mu[i+1])
-            #     angle = '\n' + str(round(degrees(angle), 1))
-                
-            plt.plot(n[0], n[1], 'sb', markersize=1)
-            plt.annotate(
-                f'#{i}{angle}', 
-                n,
-                color='r', 
-                fontsize=8)
-        else:
+        if n not in mu:
             plt.plot(n[0], n[1], 'sg', markersize=1)
+    
+    for i, n in enumerate(mu):
+        angle = ''
+        # if i >= 1 and i < len(mu) - 1:
+        #     angle = computeAngle(
+        #         mu[i-1],
+        #         mu[i],
+        #         mu[i+1])
+        #     angle = '\n' + str(round(degrees(angle), 1))
+        plt.plot(mu[i][0], mu[i][1], 'sb', markersize=1)
+        plt.annotate(
+            f'{i}{angle}', 
+            mu[i],
+            color='r', 
+            fontsize=8)
     
     plt.figtext(
         0.5, 0.99,
-        f'number of turns: {mu_tn} \n path: {mu} \n Omax: {Omax}',
+        f'input: {args.input_path}\npath: {mu}\ntn(mu): {mu_tn}, Omax: {Omax}',
         wrap=True,
         horizontalalignment='center',
         verticalalignment='top',
         fontsize=10)
-    plt.savefig(output_path+'.png')
+    plt.savefig(f'{args.output_path}out_tnmax={args.tnmax}_sn={args.sn}_itmax={args.itmax}.png')

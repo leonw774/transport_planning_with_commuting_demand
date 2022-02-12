@@ -10,10 +10,10 @@ https://github.com/leonw774/transport_planning_with_commuting_demand
 
 修改過後的(2)式：
 
-$$ O_d(\mu) = \sum_{e \in T_i \cap \mu} |e| (max_{e' \in E}(|e'|) - |e|) 
+$$ O_d(\mu) = \sum_{e \in \mu} |e| (max_{e' \in E}(|e'|) - |e|) 
 $$
 
-where $T_i \cap \mu$ denotes the common edges that $T_i$ and $\mu$ share, and $|e|$ denotes the *length* of edge $e \in E$, i.e. the length of the road segment.
+where $|e|$ denotes the *length* of edge $e \in E$.
 
 ### 2. 不考慮Connectivity
 
@@ -30,15 +30,15 @@ where $T_i \cap \mu$ denotes the common edges that $T_i$ and $\mu$ share, and $|
 
 ### Road Network
 
-讓road network中的node本身就是一個2-integer tuple這樣寫起來比較方便，`x`、`y`也保留。
+讓road network中的node本身就是一個2-integer tuple這樣寫起來比較方便，但保留`x`、`y`。
 
-原本的transit net的`path`因為就是(u, v)了，所以刪除。
+原本的transit net的`path`不需要了，刪除。
 
 Attributes:
 - Node
-  - `x`, `y`: 交點的坐標
+  - `x`, `y`: 該點的坐標
 - Edge
-  - `length`: 路段的長度。
+  - `length`: 長度。
   - `score`: 將自己(這個edge)代入新的(2)式計算後的結果。
   - $e_i[\text{score}] = O_d(e_i)$
 
@@ -100,6 +100,6 @@ Priority queue實作在`pq.py`的`MyPQ`。
 
 正式dataset的`Exp1-G20_vindex.txt`的圖片輸出結果:
 
-![](https://i.imgur.com/dZ0GuvP.png)
+![](https://i.imgur.com/QYazSgH.png)
 
 實際的輸出格式還待後續要求。

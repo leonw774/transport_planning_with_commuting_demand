@@ -60,7 +60,7 @@ def getCandidateEdges(roadNet: nx.Graph, sn: int):
 
 if __name__ == '__main__':
     parser = ArgumentParser()
-    parser.add_argument('--input-path',
+    parser.add_argument('--input-path', '-i',
                         dest='input_path',
                         type=str
                         )
@@ -101,8 +101,8 @@ if __name__ == '__main__':
     parser.add_argument('--output-path', '-o',
                         dest='output_path',
                         type=str,
-                        default='output',
-                        help='output file path. set to empty string (-o=\'\') to disable output'
+                        default='./',
+                        help='output file path'
                         )        
     args = parser.parse_args()
 
@@ -262,4 +262,4 @@ if __name__ == '__main__':
                 Q.push(Ocpub, cp, Ocp, tn, cur)
 
     if args.output_path:
-        outputResult(mu, mu_tn, Omax, roadNet, args.output_path)
+        outputResult(mu, mu_tn, Omax, roadNet, args)
