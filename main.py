@@ -6,6 +6,11 @@ from geo import computeAngle
 from nets import getRoadNetwork, getTransitNetwork, getTrajectoryData
 from out import outputResult
 
+from io import StringIO
+import cProfile
+import pstats
+from time import time
+
 """
     to get edge by rank, use Ld.edges[rank]
     to get demand by rank, use Ld.demands[rank]
@@ -98,15 +103,24 @@ if __name__ == '__main__':
                         default=1000000,
                         help='limit of iteration, set -1 to be unlimited'
                         )
-    parser.add_argument('--output-path', '-o',
-                        dest='output_path',
-                        type=str,
-                        default='./',
-                        help='output file path'
-                        )        
+    parser.add_argument('--output', '-o',
+                        dest='output',
+                        action="store_true",
+                        help='enable output'
+                        )
+    parser.add_argument('--profile', '-p',
+                        dest='use_profile',
+                        action="store_true",
+                        help='enable profiling'
+                        )
     args = parser.parse_args()
 
-    print(f' input:{args.input_path}\n output:{args.output_path}')
+    print(f'input:{args.input_path}')
+
+    if args.use_profile:
+        pr = cProfile.Profile()
+        pr.enable()
+    time_begin = time()
     
     ######## GET INPUT
 
@@ -114,7 +128,7 @@ if __name__ == '__main__':
     # transitNet = getTransitNetwork(args.transit_path)
     # trajData = getTrajectoryData(args.traj_path)
 
-    print(f' road network has {roadNet.number_of_nodes()} nodes and {roadNet.number_of_edges()} edges')
+    print(f'road network has {roadNet.number_of_nodes()} nodes and {roadNet.number_of_edges()} edges')
 
     ######## GLOBAL VARIABLE INITIALIZATION 
 
@@ -134,7 +148,7 @@ if __name__ == '__main__':
 
     computeScore(roadNet)
 
-    print(f' K:{K}\n itmax:{itmax}\n Tn:{Tn}\n sn:{args.sn}')
+    print(f'K:{K} \nitmax:{itmax} \nTn:{Tn} \nsn:{args.sn}')
 
     ######## Expansion-based Traversal Algorithm (ETA)
 
@@ -261,5 +275,13 @@ if __name__ == '__main__':
                 # print('push:', Ocpub, cp, Ocp, tn, cur)
                 Q.push(Ocpub, cp, Ocp, tn, cur)
 
-    if args.output_path:
+    print(f'exec time: {time()-time_begin} seconds')
+
+    if args.use_profile:
+        pr.disable()
+        s = StringIO()
+        pstats.Stats(pr, stream=s).strip_dirs().sort_stats('cumulative').print_stats()
+        open('stat', 'w+', encoding='utf8').write(s.getvalue())
+        
+    if args.output:
         outputResult(mu, mu_tn, Omax, roadNet, args)

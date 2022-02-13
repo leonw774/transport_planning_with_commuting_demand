@@ -4,6 +4,7 @@
 *.pdf
 *.png
 *.txt
+stat
 # omsnx cache
 cache/ 
 

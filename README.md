@@ -77,7 +77,7 @@ Attributes:
 
 #### 2. Initialization
 
-`getCandidateEdges`回傳$L_d$，因為不考慮connetivity，它同時也是$L_e$。我寫了一個class `SortedEdgeDemandList`實作它。
+`getCandidateEdges`回傳$L_d$，因為不考慮connetivity，它同時也是$L_e$。我寫了一個class `SortedEdgeScoreList`實作它。
 
 $K$設為transit network的node數量和candidate edges的總數取最小值。
 
@@ -100,6 +100,7 @@ Priority queue實作在`pq.py`的`MyPQ`。
 
 正式dataset的`Exp1-G20_vindex.txt`的圖片輸出結果:
 
+(tnmax=3, sn=5000, itmax=1000000)
 ![](https://i.imgur.com/QYazSgH.png)
 
 實際的輸出格式還待後續要求。

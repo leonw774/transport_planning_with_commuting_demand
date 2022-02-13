@@ -57,4 +57,4 @@ def outputResult(mu: list, mu_tn:int,  Omax: float, roadNet: nx.Graph, args):
         horizontalalignment='center',
         verticalalignment='top',
         fontsize=10)
-    plt.savefig(f'{args.output_path}out_tnmax={args.tnmax}_sn={args.sn}_itmax={args.itmax}.png')
+    plt.savefig(f'out_tnmax={args.tnmax}_sn={args.sn}_itmax={args.itmax}.png')
