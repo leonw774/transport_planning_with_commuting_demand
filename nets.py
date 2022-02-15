@@ -3,10 +3,44 @@ import pandas as pd
 # from geo import haversine
 from math import sqrt
 
+def getPhysical(path: str) -> nx.Graph:
+    with open(path, 'r', encoding='utf-8') as f:
+        c = f.readlines()
+    assert c[0] is 'obs'
+    obs = set()
+    i = 1
+    while c[i] is not 'pois':
+        x, y = c[i].split()
+        obs.add((x, y))
+        i += 1
+    # now i point to 'pois'
+    length = int(c[i+2])
+    width = int(c[i+4])
+
+    # add all integer index coordinate as node except obs
+    P = nx.Graph
+    P.add_nodes_from([ 
+                (i, j)
+            for j in range(width)
+        for i in range(length)
+        if (i, j) not in obs
+    ])
+
+    # find all neighbors:
+    # for any grid, if you can go to another grid in chess queen moves, then that grid is a neighbor
+    for ni in P.nodes():
+        direction = [(1, 0), (1, 1), (0, 1), (-1, 1), (-1, 0), (-1, -1), (0, -1), (1, -1)]
+        for d in direction:
+            nj = ni + d 
+            while 0 <= nj[0] < length and 0 <= nj[1] < width and nj not in obs:
+                P.add_edge(ni, nj)
+
+    return P, obs, length, width
+
 """
-    A node is a two-integer tuple
+    A node is a two-integer tuple of (x, y)
 """
-def getRoadNetwork(path: str) -> nx.Graph:
+def getVirtual(path: str) -> nx.Graph:
     G = nx.Graph()
     with open(path, 'r', encoding='utf-8') as f:
         l = f.read().split('---\n')[1:]
@@ -22,20 +56,6 @@ def getRoadNetwork(path: str) -> nx.Graph:
     # keep only the largest connected component
     largest_cc = max(nx.connected_components(G), key=len)
     return G.subgraph(largest_cc)
-        
-"""
-    transit network equals road network
-"""
-def getTransitNetwork(road: nx.Graph):
-    pass
-
-"""
-    Trajectory Data is unused.
-    road edge demand is all 1
-"""
-def getTrajectoryData(path: str):
-    pass
-
 
 """
     find the shortest path between the two road segments its two nodes represent on the road network.

@@ -1,10 +1,11 @@
-from argparse import ArgumentParser 
-import networkx as nx
-from math import pi
-from pq import MyPQ
+from argparse import ArgumentParser
+from cost import redirected_walking_cost
 from geo import computeAngle
-from nets import getRoadNetwork, getTransitNetwork, getTrajectoryData
+from math import pi, atan2, dist
+from nets import getPhysical, getVirtual
+import networkx as nx
 from out import outputResult
+from pq import VRPQ, MyPQ
 
 from io import StringIO
 import cProfile
@@ -35,126 +36,64 @@ class SortedEdgeScoreList():
         return len(self.edges)
 
 """
-    input: road network
+    input: virtual network
     side effect:
-    - calculate and add 'score' attribute to some of road network edges
+    - calculate and add 'score' attribute to edges
 """
-def computeScore(roadNet: nx.Graph):
+def computeScore(virtualNet: nx.Graph):
     # find road_length_max
-    road_length_max = max(roadNet.edges[u, v]['length'] for u, v in roadNet.edges())
+    road_length_max = max(virtualNet.edges[u, v]['length'] for u, v in virtualNet.edges())
 
     # find score
-    for u, v in roadNet.edges():
-        e = roadNet.edges[u, v]
+    for u, v in virtualNet.edges():
+        e = virtualNet.edges[u, v]
         # revised formula (2)
         e['score'] = (road_length_max - e['length']) * e['length']
     
 """
-    input: road network, transit network, seeding number
-    reutrn:
+    input: virtual network, transit network, seeding number
+    return:
     - Ld (SortedEdgeScoreList) with length limit of sn
 """
-def getCandidateEdges(roadNet: nx.Graph, sn: int):
+def getCandidateEdges(virtualNet: nx.Graph, sn: int):
     # it is assumed that if an edge represents, it means the two node are close within distance of tau
     edge_score_list = [] # unsorted list
-    for u, v, attr in roadNet.edges(data=True):
+    for u, v, attr in virtualNet.edges(data=True):
         edge_score_tuple = ((u, v), attr['score'])
         edge_score_list.append(edge_score_tuple)
 
     return SortedEdgeScoreList(edge_score_list, sn)
 
-if __name__ == '__main__':
-    parser = ArgumentParser()
-    parser.add_argument('--input-path', '-i',
-                        dest='input_path',
-                        type=str
-                        )
-    # parser.add_argument('--transit-path',
-    #                     dest='transit_path',
-    #                     type=str,
-    #                     default='data/transit.graphml'
-    #                     )
-    # parser.add_argument('--trajectory-path',
-    #                     dest='traj_path',
-    #                     type=str,
-    #                     default='data/trajs.csv'
-    #                     )
-    # parser.add_argument('--tau',
-    #                     dest='tau',
-    #                     type=float,
-    #                     default=500,
-    #                     help='threshold for neighbor distance in meters. if transit is prepocessed, this does not matter.'
-    #                     )
-    parser.add_argument('--tnmax', '--turn-number-limit',
-                        dest='tnmax',
-                        type=int,
-                        default=3,
-                        help='threshold for number of turns, set -1 to be unlimited'
-                        )
-    parser.add_argument('--sn', '--seeding-number',
-                        dest='sn',
-                        type=int,
-                        default=5000,
-                        help='use top-sn edges in the list L_e as initial seeding path, set -1 to be unlimited'
-                        )
-    parser.add_argument('--itmax', '--iteration-limit',
-                        dest='itmax',
-                        type=int,
-                        default=1000000,
-                        help='limit of iteration, set -1 to be unlimited'
-                        )
-    parser.add_argument('--output', '-o',
-                        dest='output',
-                        action="store_true",
-                        help='enable output'
-                        )
-    parser.add_argument('--profile', '-p',
-                        dest='use_profile',
-                        action="store_true",
-                        help='enable profiling'
-                        )
-    args = parser.parse_args()
-
-    print(f'input:{args.input_path}')
-
-    if args.use_profile:
-        pr = cProfile.Profile()
-        pr.enable()
+"""
+    input: virtual network, turn-number max, seeding number, iteration max
+    return: found path, objective value of found path 
+"""
+def findVirtualPath(virtualNet, tnmax, sn, itmax):
     time_begin = time()
     
-    ######## GET INPUT
-
-    roadNet = getRoadNetwork(args.input_path)
-    # transitNet = getTransitNetwork(args.transit_path)
-    # trajData = getTrajectoryData(args.traj_path)
-
-    print(f'road network has {roadNet.number_of_nodes()} nodes and {roadNet.number_of_edges()} edges')
-
     ######## GLOBAL VARIABLE INITIALIZATION 
 
-    Q = MyPQ()                                  # priority queue
-    DT = dict()                                 # domination table
-    K = roadNet.number_of_nodes()               # maximum number of node in final path
-    Ld = None                                   # list of edges sorted in descending order base on their demand 
-    dmax = 0                                    # largest possible demand value
-    mu = list()                                 # best path so far, is a list of nodes
-    mu_tn = 0                                   # number of turn that path mu has
-    Omax = 0                                    # objective value of mu
-    it = 0                                      # iteration counter
-    itmax = args.itmax                          # limit of iteration
-    Tn = args.tnmax if args.tnmax >= 0 else K   # threshold for number of turns
+    Q = VRPQ()                          # priority queue
+    DT = dict()                         # domination table
+    K = virtualNet.number_of_nodes()    # maximum number of node in final path
+    Ld = None                           # list of edges sorted in descending order base on their demand 
+    dmax = 0                            # largest possible demand value
+    mu = list()                         # best path so far, is a list of nodes
+    Omax = 0                            # objective value of mu
+    it = 0                              # iteration counter
+    Tn = tnmax if tnmax >= 0 else K     # threshold for number of turns
 
     ######## PRE-PROCESS
 
-    computeScore(roadNet)
+    computeScore(virtualNet)
 
-    print(f'K:{K} \nitmax:{itmax} \nTn:{Tn} \nsn:{args.sn}')
+    print(f'K:{K} \nitmax:{itmax} \nTn:{Tn} \nsn:{sn}')
 
     ######## Expansion-based Traversal Algorithm (ETA)
 
     #### initialization phase
 
-    Ld = getCandidateEdges(roadNet, args.sn)
+    Ld = getCandidateEdges(virtualNet, sn)
     K = min(len(Ld), K)
 
     # calculate dmax
@@ -189,7 +128,7 @@ if __name__ == '__main__':
         for end_node in [cp[0], cp[-1]]:
             e = None
             maxd_e = 0
-            for v in roadNet.neighbors(end_node):
+            for v in virtualNet.neighbors(end_node):
                 if (end_node, v) in Ld.edge2d and v not in cp:
                     # p = e + cp
                     # O(p) = Od(p)/dmax = (Od(e) + Od(cp))/dmax = Ld[e]/dmax + O(cp)
@@ -246,9 +185,6 @@ if __name__ == '__main__':
             if ee_angle > pi/2:
                 tn = Tn
         
-        if Ocp == Omax: # is mu
-            mu_tn = tn
-        
         # verification
         # the Ocpub in the condition is not updated
         if (tn < Tn or Tn == -1) and Ocpub > Omax and len(cp) < K:
@@ -274,14 +210,149 @@ if __name__ == '__main__':
                 DT[frozenset((be, ee))] = Ocp
                 # print('push:', Ocpub, cp, Ocp, tn, cur)
                 Q.push(Ocpub, cp, Ocp, tn, cur)
+    
+    print(f'findVirtualPath: {time()-time_begin} seconds')
 
-    print(f'exec time: {time()-time_begin} seconds')
+    return mu, Omax
+
+"""
+    input: virtual network, physical network, found virtual path
+    return: found physical path and its cost
+"""
+def findPhysicalPath(physicalNet, virtualPath):
+    """
+        Because the edges' cost are dependent of current path, we have to run
+        single-source shortest path algorithm V times, where V is number of nodes/vertices
+    """
+    time_begin = time()
+
+    found_path = None
+    found_path_cost = float('inf')
+
+    for n in physicalNet.nodes():
+        # Dijkstra with dynamic edge weight and limited length
+        # dynamic edge weight: the cost of an edge is denpendent to already walked path
+        # limited length: the number of edges found in physical world sould be the same as the found virtual world path
+
+        # initialize
+        D = {v : (0 if v == n else float('inf')) for v in physicalNet.nodes()}
+        visited = set()
+        Q = MyPQ()
+
+        # current_cost, curent_physical_path, virtual_path_cursor, current_physical_theta
+        # theta is ranged (-pi, pi]
+        Q.push(0, [n], 0, 0)
+        
+        while Q:
+            du, path, vp_cur, ph_theta = Q.pop()
+            u = path[-1]
+
+            if u in visited:
+                continue
+            visited.add(u)
+
+            if vp_cur == 0:
+                vr_theta = 0
+            else:
+                vr_dir = virtualPath[vp_cur] - virtualPath[vp_cur-1]
+                vr_theta = atan2(vr_dir[1], vr_dir[0])
+            vr_steplength = dist(virtualPath[vp_cur], virtualPath[vp_cur+1])
+            vr_stepdir = virtualPath[vp_cur+1] - virtualPath[vp_cur]
+            vr_steptheta = atan2(vr_stepdir[1], vr_stepdir[0])
+
+            for v in physicalNet.neighbors(u):
+                ph_steplength = dist(v, u)
+                ph_stepdir = v - u
+                ph_steptheta = atan2(ph_stepdir[1], ph_stepdir[0])
+                vu_cost = redirected_walking_cost(vr_theta, ph_theta, vr_steplength, vr_steptheta, ph_steplength, ph_steptheta)
+                if D[v] > D[u] + vu_cost:
+                    D[v] = D[u] + vu_cost
+
+                    # if vp_cur will point to last element after plus 1, then the path is ended
+                    if vp_cur == len(virtualPath) - 2: 
+                        if D[v] < found_path_cost:
+                            found_path = path + [v]
+                            found_path_cost = D[v]
+                    # if this path is already greater than currently found minimum cost then don't add it to queue
+                    elif D[v] < found_path_cost:
+                        Q.push(D[v], path + [v], vp_cur+1, ph_steptheta)
+
+    print(f'found path: {found_path} with cost of {found_path_cost}')
+
+    print(f'findPhysicalPath: {time()-time_begin} seconds')
+
+    return found_path, found_path_cost
+
+if __name__ == '__main__':
+    parser = ArgumentParser()
+    parser.add_argument('--virtual-world-file', '-i',
+                        dest='virtual_filepath',
+                        type=str
+                        )
+    parser.add_argument('--physical-world-file', '-i',
+                        dest='physical_filepath',
+                        type=str
+                        )
+    parser.add_argument('--tnmax', '--turn-number-limit',
+                        dest='tnmax',
+                        type=int,
+                        default=3,
+                        help='threshold for number of turns, set -1 to be unlimited'
+                        )
+    parser.add_argument('--sn', '--seeding-number',
+                        dest='sn',
+                        type=int,
+                        default=5000,
+                        help='use top-sn edges in the list L_e as initial seeding path, set -1 to be unlimited'
+                        )
+    parser.add_argument('--itmax', '--iteration-limit',
+                        dest='itmax',
+                        type=int,
+                        default=1000000,
+                        help='limit of iteration, set -1 to be unlimited'
+                        )
+    parser.add_argument('--output', '-o',
+                        dest='output',
+                        action="store_true",
+                        help='enable output'
+                        )
+    parser.add_argument('--profile', '-p',
+                        dest='use_profile',
+                        action="store_true",
+                        help='enable profiling'
+                        )
+    args = parser.parse_args()
+
+    if args.use_profile:
+        pr = cProfile.Profile()
+        pr.enable()
+
+    print(f'input:{args.virtual_filepath}')
+    
+    ######## GET INPUT
+
+    virtualNet = getVirtual(args.virtual_filepath)
+
+    physicalNet, obstacles, ph_world_length, ph_world_width = getPhysical(args.physical_filepath)
+
+    print(f'virtual network has {virtualNet.number_of_nodes()} nodes and {virtualNet.number_of_edges()} edges')
+    print(f'physical network has {physicalNet.number_of_nodes()} nodes and {physicalNet.number_of_edges()} edges')
+
+    ######## FIND VIRTUAL PATH
+
+    vr_path, vr_path_value = findVirtualPath(virtualNet, args.tnmax, args.sn, args.itmax)
+
+    ######## FIND BEST PHYSICAL PATH
+
+    physical_path, ph_path_cost = findPhysicalPath(physicalNet, vr_path)
+
+    ######## OUTPUT
+
+    if args.output:
+        outputResult(vr_path, vr_path_value, physical_path, ph_path_cost, virtualNet, ph_world_length, ph_world_width, obstacles, args)
 
     if args.use_profile:
         pr.disable()
         s = StringIO()
         pstats.Stats(pr, stream=s).strip_dirs().sort_stats('cumulative').print_stats()
         open('stat', 'w+', encoding='utf8').write(s.getvalue())
-        
-    if args.output:
-        outputResult(mu, mu_tn, Omax, roadNet, args)

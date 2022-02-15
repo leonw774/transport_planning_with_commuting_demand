@@ -40,7 +40,7 @@ Attributes:
 - Edge
   - `length`: 長度。
   - `score`: 將自己(這個edge)代入新的(2)式計算後的結果。
-  - $e_i[\text{score}] = O_d(e_i)$
+  - $\text{score} = O_d(e_i)$
 
 因為無法預測Transit Network的來源會是什麼，就當作所有attribute在輸入前都已經先預處理好了。
 
@@ -73,7 +73,7 @@ Attributes:
 
 #### 1. 前處理: 計算"demand"和"score"
 
-因為「轉換機制」，反正它就是某個公式算出來的分數。由`computeDemand`處理，給road network加上"demand"和"score"。
+因為「轉換機制」，反正它就是某個公式算出來的分數。由`computeScore`處理，給road network加上"score"。
 
 #### 2. Initialization
 

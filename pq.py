@@ -1,5 +1,4 @@
 import heapq
-from collections import namedtuple
 
 """
     (ub, path, o, tn, cur)
@@ -10,7 +9,7 @@ from collections import namedtuple
     cur: cursor on the descending value list for upper bound calculation
 """
 
-class MyPQ:
+class VRPQ:
     def __init__(self) -> None:
         self.q = []
 
@@ -21,6 +20,21 @@ class MyPQ:
     def pop(self):
         ub, p, o, tn, cur = heapq.heappop(self.q)
         return -ub, p, o, tn, cur
+    
+    def __len__(self):
+        return len(self.q)
+
+class MyPQ:
+    def __init__(self, order='ascending') -> None:
+        self.q = []
+        assert order == 'ascending' or order == 'descending'
+        self.order = order
+
+    def push(self, key, *values):
+        heapq.heappush(self.q, (key, *values))
+    
+    def pop(self):
+        return heapq.heappop(self.q)
     
     def __len__(self):
         return len(self.q)
