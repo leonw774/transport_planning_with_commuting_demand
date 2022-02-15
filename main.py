@@ -1,4 +1,5 @@
 from argparse import ArgumentParser
+from telnetlib import EL
 from cost import redirected_walking_cost
 from geo import computeAngle
 from math import pi, atan2, dist
@@ -40,13 +41,13 @@ class SortedEdgeScoreList():
     side effect:
     - calculate and add 'score' attribute to edges
 """
-def computeScore(virtualNet: nx.Graph):
+def computeScore(vrNet: nx.Graph):
     # find road_length_max
-    road_length_max = max(virtualNet.edges[u, v]['length'] for u, v in virtualNet.edges())
+    road_length_max = max(vrNet.edges[u, v]['length'] for u, v in vrNet.edges())
 
     # find score
-    for u, v in virtualNet.edges():
-        e = virtualNet.edges[u, v]
+    for u, v in vrNet.edges():
+        e = vrNet.edges[u, v]
         # revised formula (2)
         e['score'] = (road_length_max - e['length']) * e['length']
     
@@ -55,10 +56,10 @@ def computeScore(virtualNet: nx.Graph):
     return:
     - Ld (SortedEdgeScoreList) with length limit of sn
 """
-def getCandidateEdges(virtualNet: nx.Graph, sn: int):
+def getCandidateEdges(vrNet: nx.Graph, sn: int):
     # it is assumed that if an edge represents, it means the two node are close within distance of tau
     edge_score_list = [] # unsorted list
-    for u, v, attr in virtualNet.edges(data=True):
+    for u, v, attr in vrNet.edges(data=True):
         edge_score_tuple = ((u, v), attr['score'])
         edge_score_list.append(edge_score_tuple)
 
@@ -68,32 +69,32 @@ def getCandidateEdges(virtualNet: nx.Graph, sn: int):
     input: virtual network, turn-number max, seeding number, iteration max
     return: found path, objective value of found path 
 """
-def findVirtualPath(virtualNet, tnmax, sn, itmax):
+def findVirtualPath(vrNet, tnmax, sn, itmax):
     time_begin = time()
     
     ######## GLOBAL VARIABLE INITIALIZATION 
 
-    Q = VRPQ()                          # priority queue
-    DT = dict()                         # domination table
-    K = virtualNet.number_of_nodes()    # maximum number of node in final path
-    Ld = None                           # list of edges sorted in descending order base on their demand 
-    dmax = 0                            # largest possible demand value
-    mu = list()                         # best path so far, is a list of nodes
-    Omax = 0                            # objective value of mu
-    it = 0                              # iteration counter
-    Tn = tnmax if tnmax >= 0 else K     # threshold for number of turns
+    Q = VRPQ()                      # priority queue
+    DT = dict()                     # domination table
+    K = vrNet.number_of_nodes()     # maximum number of node in final path
+    Ld = None                       # list of edges sorted in descending order base on their demand 
+    dmax = 0                        # largest possible demand value
+    mu = list()                     # best path so far, is a list of nodes
+    Omax = 0                        # objective value of mu
+    it = 0                          # iteration counter
+    Tn = tnmax if tnmax >= 0 else K # threshold for number of turns
 
     ######## PRE-PROCESS
 
-    computeScore(virtualNet)
+    computeScore(vrNet)
 
-    print(f'K:{K} \nitmax:{itmax} \nTn:{Tn} \nsn:{sn}')
+    print(f'K:{K} itmax:{itmax} Tn:{Tn} sn:{sn}')
 
     ######## Expansion-based Traversal Algorithm (ETA)
 
     #### initialization phase
 
-    Ld = getCandidateEdges(virtualNet, sn)
+    Ld = getCandidateEdges(vrNet, sn)
     K = min(len(Ld), K)
 
     # calculate dmax
@@ -128,7 +129,7 @@ def findVirtualPath(virtualNet, tnmax, sn, itmax):
         for end_node in [cp[0], cp[-1]]:
             e = None
             maxd_e = 0
-            for v in virtualNet.neighbors(end_node):
+            for v in vrNet.neighbors(end_node):
                 if (end_node, v) in Ld.edge2d and v not in cp:
                     # p = e + cp
                     # O(p) = Od(p)/dmax = (Od(e) + Od(cp))/dmax = Ld[e]/dmax + O(cp)
@@ -219,7 +220,7 @@ def findVirtualPath(virtualNet, tnmax, sn, itmax):
     input: virtual network, physical network, found virtual path
     return: found physical path and its cost
 """
-def findPhysicalPath(physicalNet, virtualPath):
+def findPhysicalPath(phNet, vrPath):
     """
         Because the edges' cost are dependent of current path, we have to run
         single-source shortest path algorithm V times, where V is number of nodes/vertices
@@ -229,55 +230,58 @@ def findPhysicalPath(physicalNet, virtualPath):
     found_path = None
     found_path_cost = float('inf')
 
-    for n in physicalNet.nodes():
-        # Dijkstra with dynamic edge weight and limited length
-        # dynamic edge weight: the cost of an edge is denpendent to already walked path
-        # limited length: the number of edges found in physical world sould be the same as the found virtual world path
+    # there's two way to walk the virtual path
+    for order in ['ascending', 'descending']:
 
-        # initialize
-        D = {v : (0 if v == n else float('inf')) for v in physicalNet.nodes()}
-        visited = set()
-        Q = MyPQ()
-
-        # current_cost, curent_physical_path, virtual_path_cursor, current_physical_theta
-        # theta is ranged (-pi, pi]
-        Q.push(0, [n], 0, 0)
+        if order == 'descending':
+            vrPath = list(reversed(vrPath))
         
-        while Q:
-            du, path, vp_cur, ph_theta = Q.pop()
-            u = path[-1]
+        # pre-calculation
+        # index 0 is all 0
+        # index i is the value calculated with i and i-1
 
-            if u in visited:
-                continue
-            visited.add(u)
+        # theta is ranged (-pi, pi], initial theta is 0
+        vr_theta = [
+            0 if i == 0 else
+            atan2(vrPath[i][1] - vrPath[i-1][1], vrPath[i][0] - vrPath[i-1][0])  
+            for i in range(len(vrPath))
+        ]
+        # length euclidean distance between two tuple, initial length is 0
+        vr_length = [
+            0 if i == 0 else dist(vrPath[i], vrPath[i-1])
+            for i in range(len(vrPath))
+        ]
 
-            if vp_cur == 0:
-                vr_theta = 0
-            else:
-                vr_dir = virtualPath[vp_cur] - virtualPath[vp_cur-1]
-                vr_theta = atan2(vr_dir[1], vr_dir[0])
-            vr_steplength = dist(virtualPath[vp_cur], virtualPath[vp_cur+1])
-            vr_stepdir = virtualPath[vp_cur+1] - virtualPath[vp_cur]
-            vr_steptheta = atan2(vr_stepdir[1], vr_stepdir[0])
+        for n in phNet.nodes():
+            # Dijkstra with dynamic edge weight and limited length
+            # dynamic edge weight: the cost of an edge is denpendent to already walked path
+            # limited length: the number of edges found in physical world sould be the same as the found virtual world path
 
-            for v in physicalNet.neighbors(u):
-                ph_steplength = dist(v, u)
-                ph_stepdir = v - u
-                ph_steptheta = atan2(ph_stepdir[1], ph_stepdir[0])
-                vu_cost = redirected_walking_cost(vr_theta, ph_theta, vr_steplength, vr_steptheta, ph_steplength, ph_steptheta)
-                if D[v] > D[u] + vu_cost:
-                    D[v] = D[u] + vu_cost
+            # initialize
+            D = {v : (0 if v == n else float('inf')) for v in phNet.nodes()}
+            Q = MyPQ()
 
-                    # if vp_cur will point to last element after plus 1, then the path is ended
-                    if vp_cur == len(virtualPath) - 2: 
+            # current_cost, curent_physical_path, virtual_path_cursor, current_physical_theta
+            Q.push(0, [n], 0, 0)
+            
+            while Q:
+                Du, path, vp_cur, ph_theta = Q.pop()
+                u = path[-1]
+                for v in phNet.neighbors(u):
+                    ph_steplength = dist(v, u)
+                    ph_steptheta = atan2(v[1] - u[1], v[0] - u[0])
+                    vu_cost = redirected_walking_cost(vr_theta[vp_cur], ph_theta, vr_length[vp_cur+1], vr_theta[vp_cur+1], ph_steplength, ph_steptheta)
+                    if D[v] > D[u] + vu_cost:
+                        D[v] = D[u] + vu_cost
+                        # if this path is already greater than currently found minimum cost, discard it
                         if D[v] < found_path_cost:
-                            found_path = path + [v]
-                            found_path_cost = D[v]
-                    # if this path is already greater than currently found minimum cost then don't add it to queue
-                    elif D[v] < found_path_cost:
-                        Q.push(D[v], path + [v], vp_cur+1, ph_steptheta)
-
-    print(f'found path: {found_path} with cost of {found_path_cost}')
+                            # if path will be the same length as vrPath after appending v, end search
+                            if len(path) == len(vrPath) - 1: 
+                                found_path = path + [v]
+                                found_path_cost = D[v]
+                                # print(f'found_path: {found_path} with cost: {found_path_cost}')
+                            else:
+                                Q.push(D[v], path + [v], vp_cur+1, ph_steptheta)
 
     print(f'findPhysicalPath: {time()-time_begin} seconds')
 
@@ -285,11 +289,11 @@ def findPhysicalPath(physicalNet, virtualPath):
 
 if __name__ == '__main__':
     parser = ArgumentParser()
-    parser.add_argument('--virtual-world-file', '-i',
+    parser.add_argument('--virtual-world-file', '-v',
                         dest='virtual_filepath',
                         type=str
                         )
-    parser.add_argument('--physical-world-file', '-i',
+    parser.add_argument('--physical-world-file', '-p',
                         dest='physical_filepath',
                         type=str
                         )
@@ -311,12 +315,14 @@ if __name__ == '__main__':
                         default=1000000,
                         help='limit of iteration, set -1 to be unlimited'
                         )
-    parser.add_argument('--output', '-o',
+    parser.add_argument('--output-filepath', '-o',
                         dest='output',
-                        action="store_true",
+                        type=str,
+                        nargs = '?',
+                        const='out',
                         help='enable output'
                         )
-    parser.add_argument('--profile', '-p',
+    parser.add_argument('--profile',
                         dest='use_profile',
                         action="store_true",
                         help='enable profiling'
@@ -327,29 +333,34 @@ if __name__ == '__main__':
         pr = cProfile.Profile()
         pr.enable()
 
-    print(f'input:{args.virtual_filepath}')
+    print(f'virtual file:{args.virtual_filepath}')
+    print(f'pysical file:{args.physical_filepath}')
     
     ######## GET INPUT
 
-    virtualNet = getVirtual(args.virtual_filepath)
+    time_getnets = time()
 
-    physicalNet, obstacles, ph_world_length, ph_world_width = getPhysical(args.physical_filepath)
+    vrNet = getVirtual(args.virtual_filepath)
 
-    print(f'virtual network has {virtualNet.number_of_nodes()} nodes and {virtualNet.number_of_edges()} edges')
-    print(f'physical network has {physicalNet.number_of_nodes()} nodes and {physicalNet.number_of_edges()} edges')
+    phNet, obstacles, ph_world_length, ph_world_width = getPhysical(args.physical_filepath)
+
+    print(f'virtual network has {vrNet.number_of_nodes()} nodes and {vrNet.number_of_edges()} edges')
+    print(f'physical network has {phNet.number_of_nodes()} nodes and {phNet.number_of_edges()} edges')
+
+    print(f'read and make nets: {time()-time_getnets} seconds')
 
     ######## FIND VIRTUAL PATH
 
-    vr_path, vr_path_value = findVirtualPath(virtualNet, args.tnmax, args.sn, args.itmax)
+    vr_path, vp_value = findVirtualPath(vrNet, args.tnmax, args.sn, args.itmax)
 
     ######## FIND BEST PHYSICAL PATH
 
-    physical_path, ph_path_cost = findPhysicalPath(physicalNet, vr_path)
+    physical_path, ph_path_cost = findPhysicalPath(phNet, vr_path)
 
     ######## OUTPUT
 
     if args.output:
-        outputResult(vr_path, vr_path_value, physical_path, ph_path_cost, virtualNet, ph_world_length, ph_world_width, obstacles, args)
+        outputResult(vr_path, vp_value, vrNet, physical_path, ph_path_cost, ph_world_length, ph_world_width, obstacles, args)
 
     if args.use_profile:
         pr.disable()

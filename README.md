@@ -19,20 +19,11 @@ where $|e|$ denotes the *length* of edge $e \in E$.
 
 因此"Lanczos-based Connectivity Estimation"等等的東西通通用不上
 
-## (拿到正式的dataset後的)Input格式與內容
+## Input格式與內容
 
-原本有三個input分別是:
-- Road Network
-- Transit Network
-- Trajectory Data
+### Virtual Network
 
-因為正式的dataset要求road network和transit network一模一樣，且沒有trajectory data，所有東西就往road network上塞吧。
-
-### Road Network
-
-讓road network中的node本身就是一個2-integer tuple這樣寫起來比較方便，但保留`x`、`y`。
-
-原本的transit net的`path`不需要了，刪除。
+virtual network中的node本身就是一個2-integer tuple 表示`(x, y)`這樣寫起來比較方便，但`x`、`y`的attribute還是保留。
 
 Attributes:
 - Node
@@ -42,32 +33,26 @@ Attributes:
   - `score`: 將自己(這個edge)代入新的(2)式計算後的結果。
   - $\text{score} = O_d(e_i)$
 
-因為無法預測Transit Network的來源會是什麼，就當作所有attribute在輸入前都已經先預處理好了。
 
-### Transit Network
+### Physical Network
 
-(已不需要)
-
-### Trajectory Data
-
-(已不需要)
+一個上面有障礙物的棋盤，沒有障礙物的格子對應一個node，從這個格子可用皇后的走法走到的其他格子(不包含自己)都是它的鄰居。
 
 ## 實作進度與細節
 
-- dataset的讀取/前處理
-- ~~臨時的測試用dataset~~
-- 主要演算法
+- Dataset的讀取/前處理
+- Find Virtual World Path
+  - 前處理
+  - Initialization
+  - Expansion
+- Find Physical World Path
 - 輸出結果
 
-### dataset的讀取/前處理
+### Dataset的讀取/前處理
 
 將dataset讀入後轉換成上述的格式。
 
-### 臨時的測試用dataset
-
-(已不需要)
-
-### 主要演算法
+### Find Virtual World Path
 
 跟主要演算法有關的code都在`main.py`裡
 
@@ -94,13 +79,41 @@ Priority queue實作在`pq.py`的`MyPQ`。
 - paper給的algorithm裡面，$tn(cp)$和$\mu$的更新的先後順序很奇怪？它先更新$\mu$，然後檢查$tn(cp) < Tn$後進入verification，然後在verification**裡面**才更新$tn(cp)$。但因為它一次expand兩端，所以假設原本$tn(cp) = Tn-1$，然後expand的兩端都+1，這樣push到Q裡面的時候已經是$Tn+1$了。等到它pop出來時還可以再兩端expand一次，這樣$\mu$的候選路徑會出現$tn(cp) = Tn+3$的情況
 - 我目前把順序改成: 更新$\mu$ -> 更新$tn(cp)$ -> 檢查$tn(cp) < Tn$ -> verification
 
+### Find Physical World Path
+
+偽代碼:
+```
+found_path = empty list
+found_path_cost = infinity
+for n in phyiscal network's nodes:
+  # modified Dijkstra to find shortest path started from n
+  # we don't exclude visited node when iterating neighbors
+  # and also early-stop the search if the cost is already greater than current minimum cost
+  cur_path = Q.pop()
+  u = last node in path
+  for v in u's neighbors:
+    calculate cost from u to v in respect to cur_path and virtual_path
+    if d[v] > d[u] + cost:
+      new_path = cur_path append v
+      d[v] = d[u] + cost
+      if d[v] < found_path_cost:
+        if length of new_path == length of virtual_path:
+          found_path = new_path
+          found_path_cost = d[v]
+        else:
+          Q.push(new_path) 
+      else:
+        discard new_path
+```
+
 ### 輸出結果
 
 `out.py`裡的`outputResult`是測試時為了能較好看出程式問題而讓它輸出圖片。
 
-正式dataset的`Exp1-G20_vindex.txt`的圖片輸出結果:
+最新的圖片輸出結果:
 
-(tnmax=3, sn=5000, itmax=1000000)
-![](https://i.imgur.com/QYazSgH.png)
+![](https://i.imgur.com/hyYKokP.png)
+![](https://i.imgur.com/o0bGeeX.png)
+![](https://i.imgur.com/vgs5il5.png)
 
 實際的輸出格式還待後續要求。
