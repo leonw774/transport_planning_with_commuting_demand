@@ -81,30 +81,42 @@ Priority queue實作在`pq.py`的`MyPQ`。
 
 ### Find Physical World Path
 
+考慮了virtual路徑的「正」、「反」兩種走法，並對所有physical world的項點都做一次稍微改動過的Dijkstra，找出全部可能性中的最小cost路徑。
+
+改動:
+- 拿掉了不找已經檢查過的node的在「鬆弛」時的限制，因為edge cost會隨走到這個node的時間和上一個node而有變化
+- 如果cost已經大於已知的最小cost就不繼續走
+- 如果路徑長度等於virtual路徑長度則停止並更新最小cost路徑和最小cost
+
+<!--
+
+<style>math {font-weight: bold; font-family: 'Cambria', 'Times New Roman';}</style>
+
 偽代碼:
-```
-found_path = empty list
-found_path_cost = infinity
-for n in phyiscal network's nodes:
-  # modified Dijkstra to find shortest path started from n
-  # we don't exclude visited node when iterating neighbors
-  # and also early-stop the search if the cost is already greater than current minimum cost
-  cur_path = Q.pop()
-  u = last node in path
-  for v in u's neighbors:
-    calculate cost from u to v in respect to cur_path and virtual_path
-    if d[v] > d[u] + cost:
-      new_path = cur_path append v
-      d[v] = d[u] + cost
-      if d[v] < found_path_cost:
-        if length of new_path == length of virtual_path:
-          found_path = new_path
-          found_path_cost = d[v]
-        else:
-          Q.push(new_path) 
-      else:
-        discard new_path
-```
+<div style='white-space: pre;'><b>Input:</b> virtual world path, physical world network
+Initialize <math>bestPath</math> as empty sequence, <math>minCost</math> as infinity
+For <math>virtualPath</math> from two different walking direction of virtual world path
+    For each <math>n</math> in phyiscal world network's nodes
+        Initialize <math>d</math> and <math>Q</math>
+        Add sequence <math>(n)</math> into <math>Q</math>
+        While <math>Q</math> is not empty
+            <math>q</math> := sequence with minimal cost in <math>Q</math>
+            <math>u</math> := last member of <math>q</math>
+            For <math>v</math> in <math>u</math>'s neighbors
+                Calculate <math>cost</math> from <math>u</math> to <math>v</math> in respect to <math>q</math> and <math>virtualPath</math>
+                If <math>d[v] > d[u] + cost</math>
+                    <math>q'</math> := <math>q</math> append <math>v</math> 
+                    <math>d[v] := d[u] + cost</math>
+                    If <math>d[v] < minCost</math>
+                        If <math>q'</math> has same length as <math>virtualPath</math>
+                            <math>bestPath := q'</math>
+                            <math>minCost := d[v]</math>
+                        Else
+                            Add <math>q'</math> into <math>Q</math> with cost of <math>d[v]</math>
+<b>Return:</b> <math>bestPath</math>, <math>minCost</math>
+</div>
+
+-->
 
 ### 輸出結果
 
@@ -112,8 +124,12 @@ for n in phyiscal network's nodes:
 
 最新的圖片輸出結果:
 
-![](https://i.imgur.com/hyYKokP.png)
-![](https://i.imgur.com/o0bGeeX.png)
-![](https://i.imgur.com/vgs5il5.png)
+![](https://i.imgur.com/5wcKFb7.png)
+--------
+![](https://i.imgur.com/q05VKcG.png)
+--------
+![](https://i.imgur.com/4CZhALm.png)
+--------
+![](https://i.imgur.com/JtR0kqO.png)
 
 實際的輸出格式還待後續要求。

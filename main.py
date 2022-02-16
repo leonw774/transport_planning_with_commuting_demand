@@ -1,6 +1,5 @@
 from argparse import ArgumentParser
-from telnetlib import EL
-from cost import redirected_walking_cost
+# from cost import redirected_walking_cost
 from geo import computeAngle
 from math import pi, atan2, dist
 from nets import getPhysical, getVirtual
@@ -12,6 +11,11 @@ from io import StringIO
 import cProfile
 import pstats
 from time import time
+
+from ctypes import *
+
+costlib = CDLL('./costlib.so')
+costlib.redirected_walking_cost.restype = c_float
 
 """
     to get edge by rank, use Ld.edges[rank]
@@ -270,18 +274,27 @@ def findPhysicalPath(phNet, vrPath):
                 for v in phNet.neighbors(u):
                     ph_steplength = dist(v, u)
                     ph_steptheta = atan2(v[1] - u[1], v[0] - u[0])
-                    vu_cost = redirected_walking_cost(vr_theta[vp_cur], ph_theta, vr_length[vp_cur+1], vr_theta[vp_cur+1], ph_steplength, ph_steptheta)
+                    # vu_cost = redirected_walking_cost(vr_theta[vp_cur], ph_theta, vr_length[vp_cur+1], vr_theta[vp_cur+1], ph_steplength, ph_steptheta)
+                    vu_cost = costlib.redirected_walking_cost(
+                        c_float(vr_theta[vp_cur]),
+                        c_float(ph_theta),
+                        c_float(vr_length[vp_cur+1]),
+                        c_float(vr_theta[vp_cur+1]),
+                        c_float(ph_steplength),
+                        c_float(ph_steptheta)
+                    )
                     if D[v] > D[u] + vu_cost:
                         D[v] = D[u] + vu_cost
+                        new_path = path + [v]
                         # if this path is already greater than currently found minimum cost, discard it
                         if D[v] < found_path_cost:
                             # if path will be the same length as vrPath after appending v, end search
-                            if len(path) == len(vrPath) - 1: 
-                                found_path = path + [v]
+                            if len(new_path) == len(vrPath): 
+                                found_path = new_path
                                 found_path_cost = D[v]
                                 # print(f'found_path: {found_path} with cost: {found_path_cost}')
                             else:
-                                Q.push(D[v], path + [v], vp_cur+1, ph_steptheta)
+                                Q.push(D[v], new_path, vp_cur+1, ph_steptheta)
 
     print(f'findPhysicalPath: {time()-time_begin} seconds')
 

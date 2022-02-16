@@ -17,7 +17,8 @@ def rotate_cost(gain: float) -> float:
 		return 0
 
 def redirected_walking_cost(vir_theta: float, phy_theta: float, vir_steplength: float, vir_steptheta: float, phy_steplength: float, phy_steptheta: float) -> float:
-	cost_1 = 5.0 + trans_cost(vir_steplength / phy_steplength) * vir_steplength
+	trans_gain = vir_steplength / phy_steplength
+	cost_1 = 5.0 + trans_cost(trans_gain) * vir_steplength
 	vir_rotation = vir_steptheta - vir_theta
 	phy_rotation = phy_steptheta - phy_theta
 
@@ -32,6 +33,7 @@ def redirected_walking_cost(vir_theta: float, phy_theta: float, vir_steplength: 
 		vir_rotation = pi - vir_rotation
 		phy_rotation = pi - phy_rotation
 
-	cost_2 = rotate_cost(vir_rotation / (phy_rotation + 1e-8)) + trans_cost(vir_steplength / (phy_steplength + 1e-8)) * vir_steplength
+	rotate_gain = vir_rotation / (phy_rotation + 1e-8)
+	cost_2 = rotate_cost(rotate_gain) + trans_cost(trans_gain) * vir_steplength
 
 	return min(cost_1, cost_2)

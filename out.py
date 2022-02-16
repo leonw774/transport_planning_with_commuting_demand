@@ -78,7 +78,7 @@ def outputResult(vr_path: list, vr_value: float, vrNet: nx.Graph, ph_path:list, 
     for i in range(ph_world_length):
         for j in range(ph_world_width):
             if (i, j) in obs:
-                plt.plot(i, j, 'ks', markersize=2)
+                plt.plot(i, j, 'ks', markersize=4)
             else:
                 plt.plot(i, j, 'gs', markersize=2)
 

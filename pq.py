@@ -31,10 +31,14 @@ class MyPQ:
         self.order = order
 
     def push(self, key, *values):
-        heapq.heappush(self.q, (key, *values))
+        _key = -key if self.order == 'descending' else key
+        heapq.heappush(self.q, (_key, *values))
     
     def pop(self):
-        return heapq.heappop(self.q)
+        key, *values = heapq.heappop(self.q)
+        if self.order == 'descending':
+            key = -key
+        return key, *values
     
     def __len__(self):
         return len(self.q)

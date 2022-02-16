@@ -1,3 +1,6 @@
+#include <math.h>
+#define PI 3.141592653
+
 float trans_cost(float gain)
 {
 	const float TRANS_LB = 0.86;
@@ -5,11 +8,11 @@ float trans_cost(float gain)
 
 	if (gain > TRANS_UB)
 	{
-		return std::pow(gain - TRANS_UB, 2);
+		return pow(gain - TRANS_UB, 2);
 	}
 	else if (gain < TRANS_LB)
 	{
-		return std::pow(TRANS_LB - gain, 2);
+		return pow(TRANS_LB - gain, 2);
 	}
 	else
 	{
@@ -24,25 +27,16 @@ float rotate_cost(float gain)
 
 	if (gain > ROTATE_UB)
 	{
-		return std::pow(gain - ROTATE_UB, 2);
+		return pow(gain - ROTATE_UB, 2);
 	}
 	else if (gain < ROTATE_LB)
 	{
-		return std::pow(ROTATE_LB - gain, 2);
+		return pow(ROTATE_LB - gain, 2);
 	}
 	else
 	{
 		return 0;
 	}
-}
-
-float intermediate_cost(float vir_steplength, float phy_steplength)
-{
-	const float RESET_COST = 5.0;
-
-	float trans_gain = vir_steplength / phy_steplength;
-
-	return RESET_COST + trans_cost(trans_gain) * vir_steplength;
 }
 
 float redirected_walking_cost(float vir_theta, float phy_theta, float vir_steplength, float vir_steptheta, float phy_steplength, float phy_steptheta)
@@ -58,23 +52,23 @@ float redirected_walking_cost(float vir_theta, float phy_theta, float vir_steple
 
 	if (vir_rotation < 0)
 	{
-		vir_rotation += std::numbers::pi;
+		vir_rotation += PI;
 	}
 
 	if (phy_rotation < 0)
 	{
-		phy_rotation += std::numbers::pi;
+		phy_rotation += PI;
 	}
 
 	// clockwise rotation
-	if (vir_rotation > std::numbers::pi / 2)
+	if (vir_rotation > PI / 2)
 	{
-		vir_rotation = std::numbers::pi - vir_rotation;
-		phy_rotation = std::numbers::pi - phy_rotation;
+		vir_rotation = PI - vir_rotation;
+		phy_rotation = PI - phy_rotation;
 	}
 
 	float rotate_gain = vir_rotation / phy_rotation;
 	float cost_2 = rotate_cost(rotate_gain) + trans_cost(trans_gain) * vir_steplength;
 
-	return std::min(cost_1, cost_2);
+	return (cost_1 < cost_2) ? cost_1 : cost_2;
 }
