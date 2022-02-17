@@ -212,7 +212,7 @@ def findVirtualPath(vrNet: nx.Graph, tnmax: int, sn: int, itmax: int, blocked_ed
                 # print('push:', Ocpub, cp, Ocp, tn, cur)
                 Q.push(Ocpub, cp, Ocp, tn, cur)
     
-    print(f'findVirtualPath: {time()-time_begin} seconds')
+    # print(f'findVirtualPath: {time()-time_begin} seconds')
 
     return mu, Omax
 
@@ -229,6 +229,8 @@ def findPhysicalPath(phNet, vrPath):
 
     found_path = None
     found_path_cost = float('inf')
+    found_path_start_node = None
+    found_path_order = None
 
     # there's two way to walk the virtual path
     for order in ['ascending', 'descending']:
@@ -287,13 +289,15 @@ def findPhysicalPath(phNet, vrPath):
                             # if path will be the same length as vrPath after appending v, end search
                             if len(new_path) == len(vrPath): 
                                 found_path, found_path_cost = new_path, D[v]
+                                found_path_start_node = n
+                                found_path_order = order
                                 # print(f'found_path: {found_path} with cost: {found_path_cost}')
                             else:
                                 Q.push(D[v], new_path, vp_cur+1, ph_steptheta)
 
-    print(f'findPhysicalPath: {time()-time_begin} seconds')
+    # print(f'findPhysicalPath: {time()-time_begin} seconds')
 
-    return found_path, found_path_cost
+    return found_path, found_path_cost, found_path_order
 
 if __name__ == '__main__':
     parser = ArgumentParser()
@@ -325,7 +329,7 @@ if __name__ == '__main__':
                         )
     parser.add_argument('--cost-limit', '-c',
                         dest='cost_limit',
-                        type=int,
+                        type=float,
                         nargs='?',
                         help='limit of iteration, set -1 to be unlimited'
                         )
@@ -370,12 +374,15 @@ if __name__ == '__main__':
     print(f'read and make nets: {time()-time_getnets} seconds')
 
     print(f'physical path cost limit: {args.cost_limit}')
-    print(f'virtual - itmax:{args.vritmax} Tn:{args.tnmax} sn:{args.sn}')
+    print(f'findVirtualPath parameter: itmax={args.vritmax} Tn={args.tnmax} sn={args.sn}')
+
+    time_findpaths = time()
 
     blocked_edges_queue = deque([set()]) # init a queue with an empty set
     blocked_edges_next_level_queue = deque()
     min_ph_path = None
     min_ph_path_cost = float('inf')
+    min_ph_path_order = None
     ph_traverse_level_count = 0
 
     while blocked_edges_queue and ph_traverse_level_count < args.phtrmax:
@@ -387,11 +394,11 @@ if __name__ == '__main__':
         vr_path, vp_value = findVirtualPath(m_vrNet, args.tnmax, args.sn, args.vritmax, cur_blocked_edges)
 
         ######## FIND BEST PHYSICAL PATH
-        ph_path, ph_path_cost = findPhysicalPath(phNet, vr_path)
-
+        ph_path, ph_path_cost, ph_path_order = findPhysicalPath(phNet, vr_path)
+        
         ######## Check cost
         if args.cost_limit is None:
-            min_ph_path, min_ph_path_cost = ph_path, ph_path_cost
+            min_ph_path, min_ph_path_cost, min_ph_path_order = ph_path, ph_path_cost, ph_path_order
             break
         
         if args.cost_limit < ph_path_cost:
@@ -403,7 +410,7 @@ if __name__ == '__main__':
                 new_blocked_edges.add(e)
                 blocked_edges_next_level_queue.append(new_blocked_edges)
         elif ph_path_cost < min_ph_path_cost:
-            min_ph_path, min_ph_path_cost = ph_path, ph_path_cost
+            min_ph_path, min_ph_path_cost, min_ph_path_order = ph_path, ph_path_cost, ph_path_order
 
         if len(blocked_edges_queue) == 0:
             # the level is all traversed
@@ -415,10 +422,14 @@ if __name__ == '__main__':
                 blocked_edges_next_level_queue = deque()
                 ph_traverse_level_count += 1
 
+        # print(min_ph_path, min_ph_path_cost)
+    
+    print(f'find paths: {time()-time_findpaths} seconds')
+
     ######## OUTPUT
 
     if args.output:
-        outputResult(vr_path, vp_value, vrNet, min_ph_path, min_ph_path_cost, ph_world_length, ph_world_width, obstacles, args)
+        outputResult(vr_path, vp_value, vrNet, min_ph_path, min_ph_path_cost, min_ph_path_order, ph_world_length, ph_world_width, obstacles, args)
 
     if args.use_profile:
         pr.disable()

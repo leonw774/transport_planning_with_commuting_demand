@@ -102,15 +102,16 @@ Priority queue實作在`pq.py`的`MyPQ`。
 
 最新的圖片輸出結果:
 
-![](https://i.imgur.com/5wcKFb7.png)
+![](https://i.imgur.com/8OZkzlc.png)
 <hr />
 
-![](https://i.imgur.com/q05VKcG.png)
+![](https://i.imgur.com/SbNUWId.png)
 <hr />
 
-![](https://i.imgur.com/4CZhALm.png)
+![](https://i.imgur.com/0GjaSou.png)
 <hr />
 
-![](https://i.imgur.com/JtR0kqO.png)
+![](https://i.imgur.com/eKrERhW.png)
+<hr />
 
 實際的輸出格式還待後續要求。
