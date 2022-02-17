@@ -58,7 +58,7 @@ def outputResult(vr_path: list, vr_value: float, vrNet: nx.Graph, ph_path:list, 
     
     plt.figtext(
         0.5, 0.99,
-        f'virtual world: {args.virtual_filepath}\ntnmax: {args.tnmax} sn: {args.sn} itmax: {args.itmax}\npath: {vr_path}\n Omax: {vr_value}',
+        f'virtual world: {args.virtual_filepath}\ntnmax: {args.tnmax} sn: {args.sn} itmax: {args.vritmax}\npath: {vr_path} Omax: {vr_value}',
         wrap=True,
         horizontalalignment='center',
         verticalalignment='top',
@@ -82,22 +82,23 @@ def outputResult(vr_path: list, vr_value: float, vrNet: nx.Graph, ph_path:list, 
             else:
                 plt.plot(i, j, 'gs', markersize=2)
 
-    # draw path
-    prex = prey = None
-    for i, n in enumerate(ph_path):
-        x, y = n
-        plt.annotate(
-            str(i), 
-            n,
-            color='k', 
-            fontsize=10)
-        if prex is not None:
-            plt.plot([prex, x], [prey, y], 'r-', lw=1)
-        prex, prey = x, y
+    if ph_path is not None:
+        # draw path
+        prex = prey = None
+        for i, n in enumerate(ph_path):
+            x, y = n
+            plt.annotate(
+                str(i), 
+                n,
+                color='k', 
+                fontsize=10)
+            if prex is not None:
+                plt.plot([prex, x], [prey, y], 'r-', lw=1)
+            prex, prey = x, y
 
     plt.figtext(
         0.5, 0.1,
-        f'physical world: {args.physical_filepath}\npath: {ph_path}\n cost: {ph_cost}',
+        f'physical world: {args.physical_filepath}\npath: {ph_path}\n cost: {ph_cost} cost limit: {args.cost_limit}',
         wrap=True,
         horizontalalignment='center',
         verticalalignment='top',

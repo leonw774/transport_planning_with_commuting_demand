@@ -1,10 +1,10 @@
 #include <math.h>
 #define PI 3.141592653
 
-float trans_cost(float gain)
+double trans_cost(double gain)
 {
-	const float TRANS_LB = 0.86;
-	const float TRANS_UB = 1.26;
+	const double TRANS_LB = 0.86;
+	const double TRANS_UB = 1.26;
 
 	if (gain > TRANS_UB)
 	{
@@ -20,10 +20,10 @@ float trans_cost(float gain)
 	}
 }
 
-float rotate_cost(float gain)
+double rotate_cost(double gain)
 {
-	const float ROTATE_LB = 0.67;
-	const float ROTATE_UB = 1.24;
+	const double ROTATE_LB = 0.67;
+	const double ROTATE_UB = 1.24;
 
 	if (gain > ROTATE_UB)
 	{
@@ -39,16 +39,16 @@ float rotate_cost(float gain)
 	}
 }
 
-float redirected_walking_cost(float vir_theta, float phy_theta, float vir_steplength, float vir_steptheta, float phy_steplength, float phy_steptheta)
+double redirected_walking_cost(double vir_theta, double phy_theta, double vir_steplength, double vir_steptheta, double phy_steplength, double phy_steptheta)
 {
-	float RESET_COST = 5.0;
+	double RESET_COST = 5.0;
 
-	float trans_gain = vir_steplength / phy_steplength;
+	double trans_gain = vir_steplength / phy_steplength;
 
-	float cost_1 = RESET_COST + trans_cost(trans_gain) * vir_steplength;
+	double cost_1 = RESET_COST + trans_cost(trans_gain) * vir_steplength;
 
-	float vir_rotation = vir_steptheta - vir_theta;
-	float phy_rotation = phy_steptheta - phy_theta;
+	double vir_rotation = vir_steptheta - vir_theta;
+	double phy_rotation = phy_steptheta - phy_theta;
 
 	if (vir_rotation < 0)
 	{
@@ -67,8 +67,8 @@ float redirected_walking_cost(float vir_theta, float phy_theta, float vir_steple
 		phy_rotation = PI - phy_rotation;
 	}
 
-	float rotate_gain = vir_rotation / phy_rotation;
-	float cost_2 = rotate_cost(rotate_gain) + trans_cost(trans_gain) * vir_steplength;
+	double rotate_gain = vir_rotation / phy_rotation;
+	double cost_2 = rotate_cost(rotate_gain) + trans_cost(trans_gain) * vir_steplength;
 
 	return (cost_1 < cost_2) ? cost_1 : cost_2;
 }

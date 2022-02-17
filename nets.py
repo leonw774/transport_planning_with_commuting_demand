@@ -57,7 +57,16 @@ def getVirtual(path: str) -> nx.Graph:
     
     # keep only the largest connected component
     largest_cc = max(nx.connected_components(G), key=len)
-    return G.subgraph(largest_cc)
+    G = G.subgraph(largest_cc)
+
+    # compute score
+    road_length_max = max(G.edges[u, v]['length'] for u, v in G.edges())
+    for u, v in G.edges():
+        e = G.edges[u, v]
+        # revised formula (2)
+        e['score'] = (road_length_max - e['length']) * e['length']
+
+    return G
 
 """
     find the shortest path between the two road segments its two nodes represent on the road network.

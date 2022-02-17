@@ -83,40 +83,16 @@ Priority queue實作在`pq.py`的`MyPQ`。
 
 考慮了virtual路徑的「正」、「反」兩種走法，並對所有physical world的項點都做一次稍微改動過的Dijkstra，找出全部可能性中的最小cost路徑。
 
-改動:
+對Dijkstra的改動:
 - 拿掉了在「鬆弛」時不找已經檢查過的node的限制，因為edge cost會隨走到這個node的時間和上一個node而有變化
 - 如果cost已經大於已知的最小cost就不繼續走
 - 如果路徑長度等於virtual路徑長度則停止並更新最小cost路徑和最小cost
 
-<!--
+### 檢查cost limit
 
-<style>math {font-weight: bold; font-family: 'Cambria', 'Times New Roman';}</style>
+如果有cost limit，就會建一個blocked edges tree，然後對它做level order traverse，每個node是virtual world edge的集合，root是空集合。走到一個node時會將在node裡的virtual world edge score設成負無限大，然後找virtual路徑和physical路徑。找完後後檢查physical路徑的cost是否大於cost limit。如果超過，設virtual路徑上有n個edges，這個node底下就會分出n個children node：$\text{childNodes} = \{ \text{node} \cup \{e\} \ | \ \forall e \in \text{edges of virtual path} \}$。
 
-偽代碼:
-<div style='white-space: pre;'><b>Input:</b> virtual world path, physical world network
-Initialize <math>bestPath</math> as empty sequence, <math>minCost</math> as infinity
-For <math>virtualPath</math> from two different walking direction of virtual world path
-    For each <math>n</math> in phyiscal world network's nodes
-        Initialize <math>d</math> and <math>Q</math>
-        Add sequence <math>(n)</math> into <math>Q</math>
-        While <math>Q</math> is not empty
-            <math>q</math> := sequence with minimal cost in <math>Q</math>
-            <math>u</math> := last member of <math>q</math>
-            For <math>v</math> in <math>u</math>'s neighbors
-                Calculate <math>cost</math> from <math>u</math> to <math>v</math> in respect to <math>q</math> and <math>virtualPath</math>
-                If <math>d[v] > d[u] + cost</math>
-                    <math>q'</math> := <math>q</math> append <math>v</math> 
-                    <math>d[v] := d[u] + cost</math>
-                    If <math>d[v] < minCost</math>
-                        If <math>q'</math> has same length as <math>virtualPath</math>
-                            <math>bestPath := q'</math>
-                            <math>minCost := d[v]</math>
-                        Else
-                            Add <math>q'</math> into <math>Q</math> with cost of <math>d[v]</math>
-<b>Return:</b> <math>bestPath</math>, <math>minCost</math>
-</div>
-
--->
+每traverse完一個level就會檢查是否找到了不超過cost limit的physical路徑，找到了就停止尋找，否則繼續到下一個level。
 
 ### 輸出結果
 
