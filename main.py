@@ -1,4 +1,5 @@
 from argparse import ArgumentParser
+from collections import deque
 # from cost import redirected_walking_cost
 from geo import computeAngle
 from math import pi, atan2, dist
@@ -45,15 +46,18 @@ class SortedEdgeScoreList():
     side effect:
     - calculate and add 'score' attribute to edges
 """
-def computeScore(vrNet: nx.Graph):
+def computeScore(vrNet: nx.Graph, prohibited_edges: set):
     # find road_length_max
     road_length_max = max(vrNet.edges[u, v]['length'] for u, v in vrNet.edges())
 
     # find score
     for u, v in vrNet.edges():
         e = vrNet.edges[u, v]
-        # revised formula (2)
-        e['score'] = (road_length_max - e['length']) * e['length']
+        if (u, v) in prohibited_edges or (v, u) in prohibited_edges:
+            e['score'] = float('inf')
+        else:
+            # revised formula (2)
+            e['score'] = (road_length_max - e['length']) * e['length']
     
 """
     input: virtual network, transit network, seeding number
@@ -73,10 +77,10 @@ def getCandidateEdges(vrNet: nx.Graph, sn: int):
     input: virtual network, turn-number max, seeding number, iteration max
     return: found path, objective value of found path 
 """
-def findVirtualPath(vrNet, tnmax, sn, itmax):
+def findVirtualPath(vrNet: nx.Graph, tnmax: int, sn: int, itmax: int, prohibited_edges: set):
     time_begin = time()
     
-    ######## GLOBAL VARIABLE INITIALIZATION 
+    ######## VARIABLE INITIALIZATION 
 
     Q = VRPQ()                      # priority queue
     DT = dict()                     # domination table
@@ -90,7 +94,7 @@ def findVirtualPath(vrNet, tnmax, sn, itmax):
 
     ######## PRE-PROCESS
 
-    computeScore(vrNet)
+    computeScore(vrNet, prohibited_edges)
 
     print(f'K:{K} itmax:{itmax} Tn:{Tn} sn:{sn}')
 
@@ -290,8 +294,7 @@ def findPhysicalPath(phNet, vrPath):
                         if D[v] < found_path_cost:
                             # if path will be the same length as vrPath after appending v, end search
                             if len(new_path) == len(vrPath): 
-                                found_path = new_path
-                                found_path_cost = D[v]
+                                found_path, found_path_cost = new_path, D[v]
                                 # print(f'found_path: {found_path} with cost: {found_path_cost}')
                             else:
                                 Q.push(D[v], new_path, vp_cur+1, ph_steptheta)
@@ -310,28 +313,40 @@ if __name__ == '__main__':
                         dest='physical_filepath',
                         type=str
                         )
-    parser.add_argument('--tnmax', '--turn-number-limit',
+    parser.add_argument('--turn-number-max', '--tnmax', 
                         dest='tnmax',
                         type=int,
                         default=3,
                         help='threshold for number of turns, set -1 to be unlimited'
                         )
-    parser.add_argument('--sn', '--seeding-number',
+    parser.add_argument('--seeding-number', '--sn', 
                         dest='sn',
                         type=int,
                         default=5000,
                         help='use top-sn edges in the list L_e as initial seeding path, set -1 to be unlimited'
                         )
-    parser.add_argument('--itmax', '--iteration-limit',
-                        dest='itmax',
+    parser.add_argument('--vr-iteration-max', '--vritmax', 
+                        dest='vritmax',
                         type=int,
                         default=1000000,
+                        help='limit of iteration, set -1 to be unlimited'
+                        )
+    parser.add_argument('--cost-limit', '-c',
+                        dest='cost_limit',
+                        type=int,
+                        nargs='?',
+                        help='limit of iteration, set -1 to be unlimited'
+                        )
+    parser.add_argument('--ph-iteration-max', '--phitmax',
+                        dest='phitmax',
+                        type=int,
+                        default=100,
                         help='limit of iteration, set -1 to be unlimited'
                         )
     parser.add_argument('--output-filepath', '-o',
                         dest='output',
                         type=str,
-                        nargs = '?',
+                        nargs='?',
                         const='out',
                         help='enable output'
                         )
@@ -362,18 +377,40 @@ if __name__ == '__main__':
 
     print(f'read and make nets: {time()-time_getnets} seconds')
 
-    ######## FIND VIRTUAL PATH
+    prohibited_edges_queue = deque([set()]) # init a queue with an empty set
+    min_ph_path_cost = float('inf')
+    min_ph_path = None
+    ph_it_count = 0
 
-    vr_path, vp_value = findVirtualPath(vrNet, args.tnmax, args.sn, args.itmax)
+    while ph_it_count < args.phitmax:
+        poped_prohibited_edges = prohibited_edges_queue.popleft()
 
-    ######## FIND BEST PHYSICAL PATH
+        ######## FIND VIRTUAL PATH
+        vr_path, vp_value = findVirtualPath(vrNet, args.tnmax, args.sn, args.vritmax, poped_prohibited_edges)
 
-    physical_path, ph_path_cost = findPhysicalPath(phNet, vr_path)
+        ######## FIND BEST PHYSICAL PATH
+        ph_path, ph_path_cost = findPhysicalPath(phNet, vr_path)
+
+        ######## Check cost
+        if args.cost_limit is None:
+            break
+        elif args.cost_limit < ph_path_cost:
+            for i in range(len(vr_path)-1):
+                e = (vr_path[i], vr_path[i+1])
+                if e not in poped_prohibited_edges:
+                    new_prohibited_edges = poped_prohibited_edges.copy()
+                    new_prohibited_edges.add(e)
+                    if new_prohibited_edges in prohibited_edges_queue:
+                        prohibited_edges_queue.append(new_prohibited_edges)
+        elif ph_path_cost < min_ph_path_cost:
+            min_ph_path, min_ph_path_cost = ph_path, ph_path_cost
+        
+        ph_it_count += 1
 
     ######## OUTPUT
 
     if args.output:
-        outputResult(vr_path, vp_value, vrNet, physical_path, ph_path_cost, ph_world_length, ph_world_width, obstacles, args)
+        outputResult(vr_path, vp_value, vrNet, min_ph_path, min_ph_path_cost, ph_world_length, ph_world_width, obstacles, args)
 
     if args.use_profile:
         pr.disable()

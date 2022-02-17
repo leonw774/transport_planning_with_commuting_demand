@@ -84,7 +84,7 @@ Priority queue實作在`pq.py`的`MyPQ`。
 考慮了virtual路徑的「正」、「反」兩種走法，並對所有physical world的項點都做一次稍微改動過的Dijkstra，找出全部可能性中的最小cost路徑。
 
 改動:
-- 拿掉了不找已經檢查過的node的在「鬆弛」時的限制，因為edge cost會隨走到這個node的時間和上一個node而有變化
+- 拿掉了在「鬆弛」時不找已經檢查過的node的限制，因為edge cost會隨走到這個node的時間和上一個node而有變化
 - 如果cost已經大於已知的最小cost就不繼續走
 - 如果路徑長度等於virtual路徑長度則停止並更新最小cost路徑和最小cost
 
@@ -122,14 +122,19 @@ For <math>virtualPath</math> from two different walking direction of virtual wor
 
 `out.py`裡的`outputResult`是測試時為了能較好看出程式問題而讓它輸出圖片。
 
+我自己加了一個較大的physical空間:phy-big.txt，可以看到更清楚的輸出結果。
+
 最新的圖片輸出結果:
 
 ![](https://i.imgur.com/5wcKFb7.png)
---------
+<hr />
+
 ![](https://i.imgur.com/q05VKcG.png)
---------
+<hr />
+
 ![](https://i.imgur.com/4CZhALm.png)
---------
+<hr />
+
 ![](https://i.imgur.com/JtR0kqO.png)
 
 實際的輸出格式還待後續要求。
