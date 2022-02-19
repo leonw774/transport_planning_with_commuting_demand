@@ -64,52 +64,7 @@ def getVirtual(path: str) -> nx.Graph:
     for u, v in G.edges():
         e = G.edges[u, v]
         # revised formula (2)
-        e['score'] = (road_length_max - e['length']) * e['length']
+        e['score'] = road_length_max - e['length']
+        # e['score'] = (road_length_max - e['length']) * e['length']
 
     return G
-
-"""
-    find the shortest path between the two road segments its two nodes represent on the road network.
-    the path will include the beginning and ending road segment as it is a undirected graph
-    the result will store in the attribute `path` of each edge as a list of road network edge id 
-"""
-""" def findShortestPath(road1: tuple, road2: tuple, roadNet: nx.Graph):
-    # there are four combination of start and ending node between two undirected edge
-    lengths = [
-        nx.shortest_path_length(roadNet, road1[0], road2[0], weight='length'),
-        nx.shortest_path_length(roadNet, road1[0], road2[1], weight='length'),
-        nx.shortest_path_length(roadNet, road1[1], road2[0], weight='length'),
-        nx.shortest_path_length(roadNet, road1[1], road2[1], weight='length')
-    ]
-    argmax_length = lengths.index(max(lengths))
-    r1 = int(argmax_length >= 2)
-    r2 = argmax_length % 2
-    path = nx.shortest_path(roadNet, road1[r1], road2[r2], weight='length')
-    # because path have to include the begin road and ending road
-    # find other node on road
-    r1_ = 0 if r1 else 1
-    r2_ = 0 if r2 else 1
-    # if this node is already in path then empty, otherwise get it
-    r1__nid = '' if road1[r1_] in path else (road1[r1_] + ' ')
-    r2__nid = '' if road1[r1_] in path else (' ' + road2[r2_])
-    path_string = r1__nid + ' '.join(path) + r2__nid
-    return path_string
-"""
-
-"""
-    input: transit network, road network, tau
-    side effect:
-    - add edge between every node pair that their distance is less than or equal to tau
-    - for each edge, find shortest path on road network, and add 'path' attribute to it
-"""
-""" def findNeighbors(transitNet: nx.Graph, roadNet: nx.Graph, tau: float):
-    checked = set()
-    for ni, attri in transitNet.nodes(data=True):
-        for nj, attrj in transitNet.nodes(data=True):
-            if frozenset([ni, nj]) in checked or ni == nj:
-                continue
-            checked.add(frozenset([ni, nj]))
-            if haversine(attri['x'], attri['y'], attrj['x'], attrj['y']) < tau:
-                pathstring = findShortestPath(transitNet.nodes[ni]['road'], transitNet.nodes[nj]['road'], roadNet)
-                transitNet.add_edge(ni, nj, path=pathstring)
-"""

@@ -58,7 +58,7 @@ def outputResult(vr_path: list, vr_value: float, vrNet: nx.Graph, ph_path:list, 
     
     plt.figtext(
         0.5, 0.99,
-        f'virtual world: {args.virtual_filepath}\ntnmax: {args.tnmax} sn: {args.sn} itmax: {args.vritmax}\npath: {vr_path} Omax: {vr_value}',
+        f'virtual world: {args.virtual_filepath}\ntnmax: {args.tnmax} sn: {args.sn} itmax: {args.vritmax}\n Omax: {vr_value}',
         wrap=True,
         horizontalalignment='center',
         verticalalignment='top',
@@ -98,7 +98,7 @@ def outputResult(vr_path: list, vr_value: float, vrNet: nx.Graph, ph_path:list, 
 
     plt.figtext(
         0.5, 0.1,
-        f'physical world: {args.physical_filepath}\npath: {ph_path} order relative to virtual: {ph_order}\n cost: {ph_cost} cost limit: {args.cost_limit}',
+        f'physical world: {args.physical_filepath}\norder relative to virtual: {ph_order}\n cost: {ph_cost} cost limit: {args.cost_limit}',
         wrap=True,
         horizontalalignment='center',
         verticalalignment='top',

@@ -75,7 +75,7 @@ def getCandidateEdges(vrNet: nx.Graph, sn: int):
     input: virtual network, turn-number max, seeding number, iteration max
     return: found path, objective value of found path 
 """
-def findVirtualPath(vrNet: nx.Graph, tnmax: int, sn: int, itmax: int, blocked_edges: set):
+def findVirtualPath(vrNet: nx.Graph, Tn: int, sn: int, itmax: int):
     time_begin = time()
     
     ######## VARIABLE INITIALIZATION 
@@ -88,7 +88,8 @@ def findVirtualPath(vrNet: nx.Graph, tnmax: int, sn: int, itmax: int, blocked_ed
     mu = list()                     # best path so far, is a list of nodes
     Omax = 0                        # objective value of mu
     it = 0                          # iteration counter
-    Tn = tnmax if tnmax >= 0 else K # threshold for number of turns
+
+    print(f'K: {K}')
 
     ######## Expansion-based Traversal Algorithm (ETA)
 
@@ -120,6 +121,7 @@ def findVirtualPath(vrNet: nx.Graph, tnmax: int, sn: int, itmax: int, blocked_ed
         Ocpub, cp, Ocp, tn, cur = Q.pop()
         # print(it, 'pop:', Ocpub, cp, Ocp, tn, cur)
         if Ocpub < Omax or (it >= itmax or itmax == -1):
+            print("break", Ocpub, Omax, cur, it)
             break
         it += 1
 
@@ -144,9 +146,10 @@ def findVirtualPath(vrNet: nx.Graph, tnmax: int, sn: int, itmax: int, blocked_ed
         # update best path
 
         if be is None and ee is None:
+            # yeah this happens
             continue
-        # yeah this happens
-        # sometime you just can't find new edge?
+            # sometime you just can't find new edge?
+
         if be is not None:
             cp = [be] + cp
         if ee is not None:
@@ -161,30 +164,31 @@ def findVirtualPath(vrNet: nx.Graph, tnmax: int, sn: int, itmax: int, blocked_ed
 
         if Ocp > Omax:
             Omax, mu = Ocp, cp
-            #print('new mu', cp, Ocp, tn, cur)
+            print('new mu', Ocpub, cp, Ocp, tn, cur)
         
-        # update turn number
-        if be is not None:
-            be_angle = computeAngle(
-                cp[0],
-                cp[1],
-                cp[2])
-            # print(be_angle)
-            if be_angle > pi/4:
-                tn += 1
-            if be_angle > pi/2:
-                tn = Tn
-        
-        if ee is not None:
-            ee_angle = computeAngle(
-                cp[-1],
-                cp[-2],
-                cp[-3])
-            # print(ee_angle)
-            if ee_angle > pi/4:
-                tn += 1
-            if ee_angle > pi/2:
-                tn = Tn
+        if Tn > 0:
+            # update turn number
+            if be is not None:
+                be_angle = computeAngle(
+                    cp[0],
+                    cp[1],
+                    cp[2])
+                # print(be_angle)
+                if be_angle > pi/4:
+                    tn += 1
+                if be_angle > pi/2:
+                    tn = Tn
+            
+            if ee is not None:
+                ee_angle = computeAngle(
+                    cp[-1],
+                    cp[-2],
+                    cp[-3])
+                # print(ee_angle)
+                if ee_angle > pi/4:
+                    tn += 1
+                if ee_angle > pi/2:
+                    tn = Tn
         
         # verification
         # the Ocpub in the condition is not updated
@@ -312,7 +316,7 @@ if __name__ == '__main__':
     parser.add_argument('--turn-number-max', '--tnmax', 
                         dest='tnmax',
                         type=int,
-                        default=3,
+                        default=-1,
                         help='threshold for number of turns, set -1 to be unlimited'
                         )
     parser.add_argument('--seeding-number', '--sn', 
@@ -391,7 +395,7 @@ if __name__ == '__main__':
         m_vrNet = blockEdges(vrNet, cur_blocked_edges)
 
         ######## FIND VIRTUAL PATH
-        vr_path, vp_value = findVirtualPath(m_vrNet, args.tnmax, args.sn, args.vritmax, cur_blocked_edges)
+        vr_path, vp_value = findVirtualPath(m_vrNet, args.tnmax, args.sn, args.vritmax)
 
         ######## FIND BEST PHYSICAL PATH
         ph_path, ph_path_cost, ph_path_order = findPhysicalPath(phNet, vr_path)
