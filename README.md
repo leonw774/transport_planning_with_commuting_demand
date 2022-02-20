@@ -1,6 +1,6 @@
 # Transport Planning with Commuting Demand
 
-https://github.com/leonw774/transport_planning_with_commuting_demand
+https://github.com/leonw774/transport_planning_with_commuting_demand/tree/dual-world
 
 [TOC]
 
@@ -16,7 +16,7 @@ https://github.com/leonw774/transport_planning_with_commuting_demand
 - A mapping from virtual world vertex to physical world vertex. $m_{vp}: V_v \rightarrow V_p$
 - Source point: a virtual world vertex. $s \in V_v$
 - Destination points: a set of virtual world vertices. $v_d \subseteq V_v$
-- A cost function: $\text{cost} : E_v; E_p, m_{vp} \rightarrow \reals^+$, 
+- A cost function: $\text{cost} : (E_v; E_p, m_{vp}) \rightarrow \mathbb{R}^+$, 
 
 ### PARAMETERS
 
@@ -33,7 +33,7 @@ We define $G_v' = (V_v', E_v')$ as a **complete graph** where $V_v' = v_d \cup \
 
 Let $|e'|$ be the weight of edge $e' = (u, v) \in E_v'$,
 
-$$ |e'| = \underset{p}{min} \left( \sum_{e_p \in p} \alpha (max_{e_v \in E_v}(|e_v|) - |e_p|)  + (1 - \alpha) \text{cost}(e_p; E_p, m_{vp}) \right) 
+$$ |e'| = \underset{p}{min} \left( \sum_{e_p \in p} \alpha (max_{e_v \in E_v}(|e_v| - |e_p|))  + (1 - \alpha) \text{cost}(e_p; E_p, m_{vp}) \right) 
 $$
 
 where $p$ is a path on $G_v$ that start from $u$ and end on $v$, $e_p$ is an edge in $p$.
@@ -44,10 +44,7 @@ We also record the path $p_{e'}$ that correponded to $|e'|$ for each edge $e'$. 
 
 對原本的演算法做了一些修改
 
-1. (2)式修改成：
-
-$$ O_d(\mu) = \sum_{e' \in \mu} |e'|
-$$
+1. (2)式修改成： $O_d(\mu) = \sum_{e' \in \mu} - |e'|$。因為這個演算法會找最大值，而我們希望路徑的weight愈小愈好。
 
 2. 不考慮Connectivity
 
@@ -61,22 +58,23 @@ $$
 
 Attributes:
 - Node
-  - `phy`: 對應的physical world graph node
+  - `phy`: 對應的physical world graph node = $m_{vp}(e)$
 - Edge
   - `length` = $|e|$
+  - `weight` = $\alpha (max_{e_v \in E_v}(|e_v| - |e|))  + (1 - \alpha) \text{cost}(e; E_p, m_{vp})$
 
 ### Tranformed Virtual Network
 
 Attributes:
 - Edge
-  - `weight`: $|e'|$
-  - `path`: $p_{e'}$
+  - `weight` = $-|e'|$
+  - `path` = $p_{e'}$
 
 ### Physical Network
 
 一個上面有障礙物的棋盤，沒有障礙物的格子對應一個node，從這個格子可用皇后的走法走到的其他格子(不包含自己)都是它的鄰居。
 
-## 實作進度與細節
+## 實作規劃/進度/細節
 
 ### Dataset的讀取/前處理
 
@@ -87,15 +85,18 @@ Attributes:
 - `getPhysical(path: str) -> nx.Graph`: 讀入physical network
 
 新增:
-- `makeTransformedVirtual(vrNet: nx.Graph, source: tuple, destnations: set, phNet: nx.Graph, costFunc: Callable) -> nx.Graph`
+- `makeTransformedVirtual(vrNet: nx.Graph, source: tuple, destnations: set, alpha: float, phNet: nx.Graph, costFunc: callable) -> nx.Graph`:
+  - 建出transformed virtual world的network：頂點只有`source`和`destnations`的complete graph
+  - 用`alpha`、`phNet`和`costFunc`給virtual world算出每一個edge的`weight`
+  - 用Floyd-Warshall找出virtual network上(`source`+`destnations`)兩兩之間的最小weight/最小weight路徑，分別成為transformed virtual network的`weight`和`path`
+  - return tfvrNet
 
 ### Find Virtual Graph Path
 
-`findVirtualPath(vrNet: nx.Graph, tfvrNet: nx.Graph, Tn: int, sn: int, itmax: int) -> list, float`
-
-return path, totalWeight
-
-在`tfvrNet`上找路徑，然後轉換回`vrNet`上的路徑
+`findVirtualPath(vrNet: nx.Graph, tfvrNet: nx.Graph, Tn: int, sn: int, itmax: int) -> list, float`:
+- return path, totalWeight
+- 在`tfvrNet`上找路徑，然後轉換回`vrNet`上的路徑
+- 找到的路徑要能是circle path
 
 #### Initialization
 
@@ -109,9 +110,9 @@ Priority queue實作在`pq.py`的`MyPQ`。
 
 進while loop後開始expansion，因為不考慮connectivity的關係，每一次expansion就是從鄰居中找在$L_d$裡面排最前的那個。
 
-與計算夾角和距離有關的函數都放在`geo.py`。雖然$Tn$設成無限之後就不需要計算夾角了但還是先留著誰知道以後用不用得上。
+與計算夾角和距離有關的函數都放在`geo.py`。(新增:)雖然$Tn$設成無限之後就不需要計算夾角了但還是先留著誰知道以後用不用得上。
 
-不知道要怎麼達成「要全部的vertex都走到才算是合格的輸出路徑」，因為Algorithm 1的Line5-6，當$O^{\uparrow}(cp) \leq max$時會break loop。把它拿掉嗎？
+(新增:) 不知道要怎麼達成「要全部的vertex都走到才算是合格的輸出路徑」，因為Algorithm 1的Line5-6，當$O^{\uparrow}(cp) \leq max$時會break loop。把它拿掉嗎？
 
 一些狀況:
 - 會發生beginning edge和ending edge是同一個的狀況，根據paper第3頁的註解4，頭尾相連的環形路線是允許的。目前的設計是`be == ee`的路線可作為$\mu$的候選路線，但不能expand。

@@ -121,6 +121,7 @@ def findVirtualPath(vrNet: nx.Graph, Tn: int, sn: int, itmax: int):
         Ocpub, cp, Ocp, tn, cur = Q.pop()
         # print(it, 'pop:', Ocpub, cp, Ocp, tn, cur)
         if Ocpub < Omax or (it >= itmax or itmax == -1):
+        # if it >= itmax or itmax == -1:
             print("break", Ocpub, Omax, cur, it)
             break
         it += 1
@@ -164,7 +165,8 @@ def findVirtualPath(vrNet: nx.Graph, Tn: int, sn: int, itmax: int):
 
         if Ocp > Omax:
             Omax, mu = Ocp, cp
-            print('new mu', Ocpub, cp, Ocp, tn, cur)
+            # print('new mu', Ocpub, cp, Ocp, tn, cur)
+            # print('new mu', Ocpub, len(cp), Ocp, tn, cur)
         
         if Tn > 0:
             # update turn number
@@ -193,6 +195,7 @@ def findVirtualPath(vrNet: nx.Graph, Tn: int, sn: int, itmax: int):
         # verification
         # the Ocpub in the condition is not updated
         if (tn < Tn or Tn == -1) and Ocpub > Omax and len(cp) < K:
+        # if (tn < Tn or Tn == -1) and len(cp) < K:
 
             # When a new edge is added, if its weight Ld[e] is smaller than the cur-th top edge’s demand Ld(cur)
             # it means we can replace one top edge with the inserted one
@@ -214,6 +217,7 @@ def findVirtualPath(vrNet: nx.Graph, Tn: int, sn: int, itmax: int):
             if Ocp > DT.get(frozenset((be, ee)), 0) and be != ee:
                 DT[frozenset((be, ee))] = Ocp
                 # print('push:', Ocpub, cp, Ocp, tn, cur)
+                # print('push:', Ocpub, len(cp), Ocp, tn, cur)
                 Q.push(Ocpub, cp, Ocp, tn, cur)
     
     # print(f'findVirtualPath: {time()-time_begin} seconds')
