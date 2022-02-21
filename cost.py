@@ -1,5 +1,8 @@
 from math import pi
 
+def costFunc(vrFromNode: tuple, vrToNode: tuple, phFromNode: tuple, phToNode: tuple) -> float:
+	pass
+
 def trans_cost(gain: float) -> float:
 	if (gain > 1.26):
 		return pow(gain - 0.86, 2)
