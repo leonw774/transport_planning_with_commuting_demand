@@ -64,12 +64,12 @@ def getVirtual(path: str) -> nx.Graph:
     """
         ↓ temporary phy attribute for testing
     """
-    max_x, min_x = min(n[0] for n in G.nodes), max(n[0] for n in G.nodes)
-    max_y, min_y = min(n[1] for n in G.nodes), max(n[1] for n in G.nodes)
+    max_x, min_x = max(n[0] for n in G.nodes), min(n[0] for n in G.nodes)
+    max_y, min_y = max(n[1] for n in G.nodes), min(n[1] for n in G.nodes)
 
     for n in G.nodes():
-        phy_x = int( (G.nodes[n][0] - min_x) / (max_x - min_x) )
-        phy_y = int( (G.nodes[n][0] - min_y) / (max_y - min_y) )
+        phy_x = int( (n[0] - min_x) / (max_x - min_x) * 19)
+        phy_y = int( (n[1] - min_y) / (max_y - min_y) * 19)
         if phy_x == 6 and phy_y == 13:
             phy_y == 12
         G.nodes[n]['phy'] = (phy_x, phy_y)
@@ -88,20 +88,15 @@ def getVirtual(path: str) -> nx.Graph:
     """
         random generate source and destinations for testing
     """
-    source = choice(G.nodes())
-    destinations = choices(G.nodes(), k=randint(1, 5))
+    source = choice(list(G.nodes()))
+    destinations = set(choices(list(G.nodes()), k=randint(3, 6)))
 
     return G, source, destinations
 
 """
     make transformed virtual network
 """
-def makeTransformedVirtual(
-vrNet: nx.Graph,
-source: tuple,
-destnations: set,
-alpha: float,
-costFunc: callable) -> nx.Graph:
+def makeTransformedVirtual(vrNet: nx.Graph, source: tuple, destnations: set, alpha: float, costFunc: callable) -> nx.Graph:
     # initialize transformd virtual network
     nodes_of_interest = destnations.union([source])
     tfvrNet = nx.complete_graph(nodes_of_interest)
@@ -109,12 +104,15 @@ costFunc: callable) -> nx.Graph:
     # cal single edge weight on vrNet
     for u, v in vrNet.edges():
         cost = costFunc(u, v, vrNet.nodes[u]['phy'], vrNet.nodes[v]['phy'])
-        vrNet.edges[u, v]['weight'] = alpha * vrNet.edges[u, v]['length'] + (1 + alpha) * cost
+        vrNet.edges[u, v]['cost'] = cost
+        vrNet.edges[u, v]['weight'] = alpha * vrNet.edges[u, v]['length'] + (1 - alpha) * cost
+
     
     # cal weights for tfvrNet
     predecessors, distances = nx.floyd_warshall_predecessor_and_distance(vrNet)
     for u, v in tfvrNet.edges():
         tfvrNet.edges[u, v]['weight'] = -distances[u][v]
+        # print(f'[{u}, {v}] = {-distances[u][v]}')
         path = nx.reconstruct_path(u, v, predecessors)
         tfvrNet.edges[u, v]['path'] = path
 

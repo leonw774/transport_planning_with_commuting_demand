@@ -46,7 +46,7 @@ def getCandidateEdges(vrNet: nx.Graph, sn: int):
     # it is assumed that if an edge represents, it means the two node are close within distance of tau
     edge_score_list = [] # unsorted list
     for u, v, attr in vrNet.edges(data=True):
-        edge_score_tuple = ((u, v), attr['score'])
+        edge_score_tuple = ((u, v), attr['weight'])
         edge_score_list.append(edge_score_tuple)
 
     return SortedEdgeScoreList(edge_score_list, sn)
@@ -56,13 +56,13 @@ def getCandidateEdges(vrNet: nx.Graph, sn: int):
     input: transformed virtual network, turn-number max, seeding number, iteration max
     return: found path, objective value of found path
 """
-def findTransformedVirtualPath(tfvrNet: nx.Graph, Tn: int, sn: int, itmax: int) -> tuple[list, float]:
+def findTransformedVirtualPath(tfvrNet: nx.Graph, Tn: int, sn: int, itmax: int):
 
     ######## VARIABLE INITIALIZATION 
 
     Q = MyPQ(order='descending')    # priority queue
     DT = dict()                     # domination table
-    K = tfvrNet.number_of_nodes()   # maximum number of node in final path
+    K = tfvrNet.number_of_nodes()+1 # maximum number of node in final path
     Ld = None                       # list of edges sorted in descending order base on their demand 
     dmax = 0                        # largest possible demand value
     mu = list()                     # best path so far, is a list of nodes
@@ -102,7 +102,7 @@ def findTransformedVirtualPath(tfvrNet: nx.Graph, Tn: int, sn: int, itmax: int) 
         # print(it, 'pop:', Ocpub, cp, Ocp, tn, cur)
         if Ocpub < Omax or (it >= itmax or itmax == -1):
         # if it >= itmax or itmax == -1:
-            print("break", Ocpub, Omax, cur, it)
+            # print("break", Ocpub, Omax, cur, it)
             break
         it += 1
 
@@ -111,7 +111,7 @@ def findTransformedVirtualPath(tfvrNet: nx.Graph, Tn: int, sn: int, itmax: int) 
         result = []
         for end_node in [cp[0], cp[-1]]:
             e = None
-            maxd_e = 0
+            maxd_e = float('-inf')
             for v in tfvrNet.neighbors(end_node):
                 if (end_node, v) in Ld.edge2d and v not in cp:
                     # p = e + cp
@@ -123,6 +123,7 @@ def findTransformedVirtualPath(tfvrNet: nx.Graph, Tn: int, sn: int, itmax: int) 
         
         be, maxd_be = result[0]
         ee, maxd_ee = result[1]
+        # print("be, ee:", be, ee)
         
         # update best path
 
@@ -205,15 +206,21 @@ def findTransformedVirtualPath(tfvrNet: nx.Graph, Tn: int, sn: int, itmax: int) 
 
 
 """
-    input: transformed virtual network, virtual network, physical network, found virtual path
-    return: physical path
+    input: transformed virtual network, virtual network, found virtual path
+    return: virtual path, physical path, totalCost
 """
-def getVirtualAndPhysicalPath(tfvrNet: nx.Graph, vrNet: nx.Graph, tfvrPath: list) -> tuple[list, list]:
+def getVirtualAndPhysicalPath(tfvrNet: nx.Graph, vrNet: nx.Graph, tfvrPath: list):
     vrPath = [tfvrPath[0]]
     for i in range(len(tfvrPath) - 1):
-        vrPath.extend(tfvrNet.edges[tfvrPath[i], tfvrPath[i+1]]['path'][1:])
+        vrSubPath = tfvrNet.edges[tfvrPath[i], tfvrPath[i+1]]['path']
+        # print(f'vrSubPath[{i}]:, {vrSubPath}')
+        if vrSubPath[-1] == vrPath[-1]:
+            vrSubPath = list(reversed(vrSubPath))
+        vrPath.extend(vrSubPath[1:])
     phPath = [vrNet.nodes[n]['phy'] for n in vrPath]
-    return vrPath, phPath
+    totalCost = sum(vrNet.edges[vrPath[n], vrPath[n+1]]['cost'] for n in range(len(vrPath) - 1))
+    return vrPath, phPath, totalCost
+
 
 if __name__ == '__main__':
     parser = ArgumentParser()
@@ -287,9 +294,9 @@ if __name__ == '__main__':
     tfvrNet = makeTransformedVirtual(vrNet, source, destinations, args.alpha, costFunc)
 
     print(f'virtual network has {vrNet.number_of_nodes()} nodes and {vrNet.number_of_edges()} edges')
-    print(f'source: {source}, destination: {destinations}')
+    print(f'alpha: {args.alpha}, source: {source}, destination: {destinations}')
     print(f'physical network has {phNet.number_of_nodes()} nodes and {phNet.number_of_edges()} edges')
-    print(f'transformed virtual network has {phNet.number_of_nodes()} nodes and {phNet.number_of_edges()} edges')
+    print(f'transformed virtual network has {tfvrNet.number_of_nodes()} nodes and {tfvrNet.number_of_edges()} edges')
 
     print(f'read and make nets: {time()-time_getnets} seconds')
 
@@ -300,17 +307,24 @@ if __name__ == '__main__':
 
     ######## FIND VIRTUAL PATH
     tfvrPath, tfvrValue = findTransformedVirtualPath(tfvrNet, args.tnmax, args.sn, args.vritmax)
-    totalCost = -tfvrValue
+    # print("tfvrPath:", tfvrPath)
 
     ######## GET CORRESPONDING PHYSICAL PATH
-    vrPath, phPath = getVirtualAndPhysicalPath(tfvrNet, vrNet, tfvrPath)
+    vrPath, phPath, totalCost = getVirtualAndPhysicalPath(tfvrNet, vrNet, tfvrPath)
+    # print("vrPath:", vrPath)
+    # print("phPath:", phPath)
+    # print("totalCost:", totalCost)
+    if args.cost_limit:
+        if totalCost < args.cost_limit:
+            print(f'Can not find path: the total cost: {totalCost} is larger than cost limit: {args.cost_limit}')
+            exit()
     
     print(f'find paths: {time()-time_findpaths} seconds')
 
     ######## OUTPUT
 
     if args.output:
-        outputResult(vrPath, totalCost, vrNet, phPath, phWorldL, phWorldW, obstacles, args)
+        outputResult(vrPath, totalCost, vrNet, source, destinations, phPath, phWorldL, phWorldW, obstacles, args)
 
     if args.use_profile:
         pr.disable()

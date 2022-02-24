@@ -6,7 +6,7 @@ from geo import computeAngle
 """
     to be re-implemented
 """
-def outputResult(vr_path: list, vr_value: float, vrNet: nx.Graph, ph_path:list, ph_cost: float, ph_order: str, ph_world_length: int, ph_world_width: int, obs: list, args):
+def outputResult(vrPath: list, totalCost: float, vrNet: nx.Graph, source, destinations, phPath:list, phWorldL: int, phWorldW: int, obs: list, args):
 
     plt.figure(figsize=(12, 6))
 
@@ -29,7 +29,7 @@ def outputResult(vr_path: list, vr_value: float, vrNet: nx.Graph, ph_path:list, 
 
     # draw path
     prex = prey = None
-    for n in vr_path:
+    for n in vrPath:
         x, y = n
         if prex is not None:
             plt.plot([prex, x], [prey, y], 'r-', lw=1)
@@ -37,11 +37,11 @@ def outputResult(vr_path: list, vr_value: float, vrNet: nx.Graph, ph_path:list, 
 
     # draw node
     for n in vrNet.nodes():
-        if n not in vr_path:
-            plt.plot(n[0], n[1], 'gs', markersize=1)
+        if n not in vrPath:
+            plt.plot(n[0], n[1], 'gs', markersize=2)
     
     # draw path node
-    for i, n in enumerate(vr_path):
+    for i, n in enumerate(vrPath):
         angle = ''
         # if i >= 1 and i < len(vr_path) - 1:
         #     angle = computeAngle(
@@ -49,7 +49,10 @@ def outputResult(vr_path: list, vr_value: float, vrNet: nx.Graph, ph_path:list, 
         #         vr_path[i],
         #         vr_path[i+1])
         #     angle = '\n' + str(round(degrees(angle), 1))
-        plt.plot(n[0], n[1], 'bs', markersize=1)
+        if n in destinations or n == source:
+            plt.plot(n[0], n[1], 'rs', markersize=2)
+        else:
+            plt.plot(n[0], n[1], 'bs', markersize=2)
         plt.annotate(
             f'{i}{angle}', 
             n,
@@ -58,7 +61,7 @@ def outputResult(vr_path: list, vr_value: float, vrNet: nx.Graph, ph_path:list, 
     
     plt.figtext(
         0.5, 0.99,
-        f'virtual world: {args.virtual_filepath}\ntnmax: {args.tnmax} sn: {args.sn} itmax: {args.vritmax}\n Omax: {vr_value}',
+        f'virtual world: {args.virtual_filepath}\nsource: {source}, destinations: {destinations}\ntnmax: {args.tnmax} sn: {args.sn} itmax: {args.vritmax}\n Omax: {totalCost}',
         wrap=True,
         horizontalalignment='center',
         verticalalignment='top',
@@ -69,23 +72,23 @@ def outputResult(vr_path: list, vr_value: float, vrNet: nx.Graph, ph_path:list, 
     ######## DRAW PHYSICAL WORLD
 
     # draw boundry
-    plt.plot([-1, ph_world_length], [-1, -1], 'k-', lw=1)
-    plt.plot([ph_world_length, ph_world_length], [-1, ph_world_width], 'k-', lw=1)
-    plt.plot([-1, -1], [-1, ph_world_width], 'k-', lw=1)
-    plt.plot([-1, ph_world_length], [ph_world_width, ph_world_width], 'k-', lw=1)
+    plt.plot([-1, phWorldL], [-1, -1], 'k-', lw=1)
+    plt.plot([phWorldL, phWorldL], [-1, phWorldW], 'k-', lw=1)
+    plt.plot([-1, -1], [-1, phWorldW], 'k-', lw=1)
+    plt.plot([-1, phWorldL], [phWorldW, phWorldW], 'k-', lw=1)
 
     # draw obs
-    for i in range(ph_world_length):
-        for j in range(ph_world_width):
+    for i in range(phWorldL):
+        for j in range(phWorldW):
             if (i, j) in obs:
                 plt.plot(i, j, 'ks', markersize=4)
             else:
                 plt.plot(i, j, 'gs', markersize=2)
 
-    if ph_path is not None:
+    if phPath is not None:
         # draw path
         prex = prey = None
-        for i, n in enumerate(ph_path):
+        for i, n in enumerate(phPath):
             x, y = n
             plt.annotate(
                 str(i), 
@@ -98,7 +101,7 @@ def outputResult(vr_path: list, vr_value: float, vrNet: nx.Graph, ph_path:list, 
 
     plt.figtext(
         0.5, 0.1,
-        f'physical world: {args.physical_filepath}\norder relative to virtual: {ph_order}\n cost: {ph_cost} cost limit: {args.cost_limit}',
+        f'physical world: {args.physical_filepath}\ncost: {totalCost} cost limit: {args.cost_limit}',
         wrap=True,
         horizontalalignment='center',
         verticalalignment='top',

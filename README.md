@@ -61,6 +61,7 @@ Attributes:
   - `phy`: 對應的physical world graph node = $m_{vp}(v)$
 - Edge
   - `length` = $|e|$
+  - `cost` = $\text{cost}(e; E_p, m_{vp})$
   - `weight` = $\alpha |e| + (1 - \alpha) \text{cost}(e; E_p, m_{vp})$
 
 ### Tranformed virtual network
@@ -110,6 +111,8 @@ def makeTransformedVirtual(vrNet: nx.Graph, source: tuple, destnations: set, alp
 def findTransformedVirtualPath(tfvrNet: nx.Graph, Tn: int, sn: int, itmax: int) -> tuple[list, float]:
 ```
 
+`return tfvrPath, tfvrValue`
+
 #### Initialization
 
 `getCandidateEdges`回傳$L_d$，因為不考慮connetivity，它同時也是$L_e$。我寫了一個class `SortedEdgeScoreList`實作它。
@@ -128,17 +131,18 @@ Priority queue實作在`pq.py`的`MyPQ`。
 
 - 為了讓找到的路線可以是環形路線，目前的設計是讓`be == ee`的路線可作為$\mu$的候選路線，但不能expand。
 
-- 有時候會無法達成「要全部的vertex都走到才算是合格的輸出路徑」。可能是因為Algorithm 1的Line5-6，當$O^{\uparrow}(cp) \leq O_{max}$時會break loop。但把它拿掉後仍然有時無法將全部的vertex都走到，目前不知道是什麼原因。
+- 無法達成「要全部的vertex都走到才算是合格的輸出路徑」。可能是因為Algorithm 1的Line5-6，當$O^{\uparrow}(cp) \leq O_{max}$時會break loop。但把它拿掉後仍然有時無法將全部的vertex都走到，目前不知道是什麼原因。
 
 ### Convert transformed virtual path into virtual path and physical path
 
 ``` python
-def getPhysicalPath(tfvrNet: nx.Graph, vrNet: nx.Graph, mu: list) -> list:
+def getVirtualAndPhysicalPath(tfvrNet: nx.Graph, vrNet: nx.Graph, tfvrPath: list):
 ```
 
-1. 把找到的tfvrNet的上的path中的每一個edge的`path`接起來就是virtual network上的path
-2. 用virtual network的`phy`把virtual path轉換成physical path
-3. return virtual path, physical path
+1. 把找到的tfvrNet的上的path中的每一個edge的`path`接起來就是vrPath
+2. 用virtual network的`phy`把vrPath轉換成phPath
+3. 從vrPath算出totalCost
+4. `return vrPath, phPath, totalCost`
 
 ### 輸出結果
 
