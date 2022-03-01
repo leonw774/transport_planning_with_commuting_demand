@@ -1,7 +1,6 @@
 import networkx as nx
 import matplotlib.pyplot as plt
-from math import degrees
-from geo import computeAngle
+# from math import degrees
 
 """
     to be re-implemented

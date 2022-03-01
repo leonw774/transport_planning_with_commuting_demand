@@ -1,7 +1,6 @@
 from argparse import ArgumentParser
 from collections import deque
 from cost import costFunc
-from geo import computeAngle
 from math import pi, atan2, dist
 from nets import getPhysical, getVirtual, makeTransformedVirtual
 import networkx as nx
@@ -54,7 +53,7 @@ def getCandidateEdges(vrNet: nx.Graph, sn: int):
 
 """
     input: transformed virtual network, turn-number max, seeding number, iteration max
-    return: found path, objective value of found path
+    return: found path
 """
 def findTransformedVirtualPath(tfvrNet: nx.Graph, Tn: int, sn: int, itmax: int):
 
@@ -202,7 +201,7 @@ def findTransformedVirtualPath(tfvrNet: nx.Graph, Tn: int, sn: int, itmax: int):
                 Q.push(Ocpub, cp, Ocp, tn, cur)
 
     # print(f'findVirtualPath: {time()-time_begin} seconds')    
-    return mu, Omax
+    return mu
 
 
 """
@@ -226,10 +225,12 @@ if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument('--virtual-world-file', '-v',
                         dest='virtual_filepath',
+                        required=True,
                         type=str
                         )
     parser.add_argument('--physical-world-file', '-p',
                         dest='physical_filepath',
+                        required=True,
                         type=str
                         )
     parser.add_argument('--turn-number-max', '--tnmax', 
@@ -281,7 +282,7 @@ if __name__ == '__main__':
         pr.enable()
 
     print(f'virtual file:{args.virtual_filepath}')
-    print(f'pysical file:{args.physical_filepath}')
+    print(f'physical file:{args.physical_filepath}')
     
     ######## GET INPUT
 
@@ -306,7 +307,7 @@ if __name__ == '__main__':
     time_findpaths = time()
 
     ######## FIND VIRTUAL PATH
-    tfvrPath, tfvrValue = findTransformedVirtualPath(tfvrNet, args.tnmax, args.sn, args.vritmax)
+    tfvrPath = findTransformedVirtualPath(tfvrNet, args.tnmax, args.sn, args.vritmax)
     # print("tfvrPath:", tfvrPath)
 
     ######## GET CORRESPONDING PHYSICAL PATH
