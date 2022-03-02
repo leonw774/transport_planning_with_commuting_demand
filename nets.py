@@ -1,7 +1,7 @@
 import networkx as nx
 from numpy import short
 import pandas as pd
-from math import sqrt
+from math import dist, sqrt
 from random import choice, choices, randint
 
 def getPhysical(path: str) -> nx.Graph:
@@ -35,7 +35,7 @@ def getPhysical(path: str) -> nx.Graph:
         for d in direction:
             nj = ni[0] + d[0], ni[1] + d[1]
             while 0 <= nj[0] < length and 0 <= nj[1] < width and nj not in obs:
-                P.add_edge(ni, nj)
+                P.add_edge(ni, nj, weight=dist(ni, nj))
                 nj = nj[0] + d[0], nj[1] + d[1]
 
     return P, obs, length, width

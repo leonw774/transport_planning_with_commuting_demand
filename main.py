@@ -205,10 +205,10 @@ def findTransformedVirtualPath(tfvrNet: nx.Graph, Tn: int, sn: int, itmax: int):
 
 
 """
-    input: transformed virtual network, virtual network, found virtual path
+    input: transformed virtual network, virtual network, physical network, found virtual path
     return: virtual path, physical path, totalCost
 """
-def getVirtualAndPhysicalPath(tfvrNet: nx.Graph, vrNet: nx.Graph, tfvrPath: list):
+def getVirtualAndPhysicalPath(tfvrNet: nx.Graph, vrNet: nx.Graph, phNet: nx.Graph, tfvrPath: list):
     vrPath = [tfvrPath[0]]
     for i in range(len(tfvrPath) - 1):
         vrSubPath = tfvrNet.edges[tfvrPath[i], tfvrPath[i+1]]['path']
@@ -216,7 +216,16 @@ def getVirtualAndPhysicalPath(tfvrNet: nx.Graph, vrNet: nx.Graph, tfvrPath: list
         if vrSubPath[-1] == vrPath[-1]:
             vrSubPath = list(reversed(vrSubPath))
         vrPath.extend(vrSubPath[1:])
-    phPath = [vrNet.nodes[n]['phy'] for n in vrPath]
+
+    phPath = [vrNet.nodes[vrPath[0]]['phy']]
+    for i in range(len(vrPath)-1):
+        u, v = vrNet.nodes[vrPath[i]]['phy'], vrNet.nodes[vrPath[i+1]]['phy']
+        if phNet.has_edge(u, v):
+            phPath.append(v)
+        else:
+            sp = nx.dijkstra_path(phNet, u, v)
+            phPath.extend(sp[1:])
+
     totalCost = sum(vrNet.edges[vrPath[n], vrPath[n+1]]['cost'] for n in range(len(vrPath) - 1))
     return vrPath, phPath, totalCost
 
@@ -311,7 +320,7 @@ if __name__ == '__main__':
     # print("tfvrPath:", tfvrPath)
 
     ######## GET CORRESPONDING PHYSICAL PATH
-    vrPath, phPath, totalCost = getVirtualAndPhysicalPath(tfvrNet, vrNet, tfvrPath)
+    vrPath, phPath, totalCost = getVirtualAndPhysicalPath(tfvrNet, vrNet, phNet, tfvrPath)
     # print("vrPath:", vrPath)
     # print("phPath:", phPath)
     # print("totalCost:", totalCost)
