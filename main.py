@@ -242,6 +242,11 @@ if __name__ == '__main__':
                         required=True,
                         type=str
                         )
+    parser.add_argument('--virtual-physical-mapping-file', '-m',
+                        dest='vp_mapping_filepath',
+                        required=True,
+                        type=str
+                        )
     parser.add_argument('--turn-number-max', '--tnmax', 
                         dest='tnmax',
                         type=int,
@@ -297,7 +302,7 @@ if __name__ == '__main__':
 
     time_getnets = time()
 
-    vrNet, source, destinations = getVirtual(args.virtual_filepath)
+    vrNet, source, destinations = getVirtual(args.virtual_filepath, args.vp_mapping_filepath)
 
     phNet, obstacles, phWorldL, phWorldW = getPhysical(args.physical_filepath)
 
@@ -317,7 +322,7 @@ if __name__ == '__main__':
 
     ######## FIND VIRTUAL PATH
     tfvrPath = findTransformedVirtualPath(tfvrNet, args.tnmax, args.sn, args.vritmax)
-    # print("tfvrPath:", tfvrPath)
+    print("tfvrPath:", tfvrPath)
 
     ######## GET CORRESPONDING PHYSICAL PATH
     vrPath, phPath, totalCost = getVirtualAndPhysicalPath(tfvrNet, vrNet, phNet, tfvrPath)
