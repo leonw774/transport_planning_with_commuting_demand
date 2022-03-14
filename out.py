@@ -60,7 +60,7 @@ def outputResult(vrPath: list, totalCost: float, vrNet: nx.Graph, source, destin
     
     plt.figtext(
         0.5, 0.99,
-        f'virtual world: {args.virtual_filepath}\nsource: {source}, destinations: {destinations}\ntnmax: {args.tnmax} sn: {args.sn} itmax: {args.vritmax}',
+        f'virtual world: {args.virtual_filepath}\nsource: {source}, destinations: {destinations}\nsn: {args.sn} itmax: {args.vritmax}',
         wrap=True,
         horizontalalignment='center',
         verticalalignment='top',

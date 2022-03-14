@@ -52,10 +52,10 @@ def getCandidateEdges(vrNet: nx.Graph, sn: int):
 
 
 """
-    input: transformed virtual network, turn-number max, seeding number, iteration max
+    input: transformed virtual network, seeding number, iteration max
     return: found path
 """
-def findTransformedVirtualPath(tfvrNet: nx.Graph, Tn: int, sn: int, itmax: int):
+def findTransformedVirtualPath(tfvrNet: nx.Graph, sn: int, itmax: int):
 
     ######## VARIABLE INITIALIZATION 
 
@@ -148,33 +148,9 @@ def findTransformedVirtualPath(tfvrNet: nx.Graph, Tn: int, sn: int, itmax: int):
             # print('new mu', Ocpub, cp, Ocp, tn, cur)
             # print('new mu', Ocpub, len(cp), Ocp, tn, cur)
         
-        if Tn > 0:
-            # update turn number
-            if be is not None:
-                be_angle = computeAngle(
-                    cp[0],
-                    cp[1],
-                    cp[2])
-                # print(be_angle)
-                if be_angle > pi/4:
-                    tn += 1
-                if be_angle > pi/2:
-                    tn = Tn
-            
-            if ee is not None:
-                ee_angle = computeAngle(
-                    cp[-1],
-                    cp[-2],
-                    cp[-3])
-                # print(ee_angle)
-                if ee_angle > pi/4:
-                    tn += 1
-                if ee_angle > pi/2:
-                    tn = Tn
-        
         # verification
         # the Ocpub in the condition is not updated
-        if (tn < Tn or Tn == -1) and Ocpub > Omax and len(cp) < K:
+        if Ocpub > Omax and len(cp) < K:
         # if (tn < Tn or Tn == -1) and len(cp) < K:
 
             # When a new edge is added, if its weight Ld[e] is smaller than the cur-th top edge’s demand Ld(cur)
@@ -247,12 +223,6 @@ if __name__ == '__main__':
                         required=True,
                         type=str
                         )
-    parser.add_argument('--turn-number-max', '--tnmax', 
-                        dest='tnmax',
-                        type=int,
-                        default=-1,
-                        help='threshold for number of turns, set -1 to be unlimited'
-                        )
     parser.add_argument('--seeding-number', '--sn', 
                         dest='sn',
                         type=int,
@@ -316,7 +286,7 @@ if __name__ == '__main__':
     print(f'read and make nets: {time()-time_getnets} seconds')
 
     print(f'physical path cost limit: {args.cost_limit}')
-    print(f'algorithm parameter: itmax={args.vritmax} Tn={args.tnmax} sn={args.sn}')
+    print(f'algorithm parameter: itmax={args.vritmax} sn={args.sn}')
 
     time_findpaths = time()
 
