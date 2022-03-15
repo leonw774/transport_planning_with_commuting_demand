@@ -1,10 +1,7 @@
 from argparse import ArgumentParser
-from collections import deque
-from cost import costFunc
-from math import pi, atan2, dist
 from nets import getPhysical, getVirtual, makeTransformedVirtual
 import networkx as nx
-from out import outputResult
+from out import outputImage, outputJSON
 from pq import MyPQ
 
 from io import StringIO
@@ -92,21 +89,20 @@ def findTransformedVirtualPath(tfvrNet: nx.Graph, sn: int, itmax: int):
         else:
             cursor = K - 2
             dub = (dmax - Ld.demands[K - 1] + Ld.edge2d[e]) / dmax
-        Q.push(dub, [*e], Ld.edge2d[e] / dmax, 0, cursor)
+        Q.push(dub, [*e], Ld.edge2d[e] / dmax, cursor)
 
     #### expansion phase
 
     while Q:
-        Ocpub, cp, Ocp, tn, cur = Q.pop()
-        # print(it, 'pop:', Ocpub, cp, Ocp, tn, cur)
-        if Ocpub < Omax or (it >= itmax or itmax == -1):
-        # if it >= itmax or itmax == -1:
+        Ocpub, cp, Ocp, cur = Q.pop()
+        # print(it, 'pop:', Ocpub, cp, Ocp, cur)
+        # if Ocpub < Omax or (it >= itmax or itmax == -1):
+        if it >= itmax or itmax == -1:
             # print("break", Ocpub, Omax, cur, it)
             break
         it += 1
 
         # expansion from two ends with best neighbors
-
         result = []
         for end_node in [cp[0], cp[-1]]:
             e = None
@@ -122,15 +118,13 @@ def findTransformedVirtualPath(tfvrNet: nx.Graph, sn: int, itmax: int):
         
         be, maxd_be = result[0]
         ee, maxd_ee = result[1]
-        # print("be, ee:", be, ee)
+        # print("be, maxd_be, ee, maxd_ee:", be, maxd_be, ee, maxd_ee)
         
         # update best path
-
         if be is None and ee is None:
-            # yeah this happens
+            # print('yeah this happens. sometime it just can\'t find new edge?')
             continue
-            # sometime you just can't find new edge?
-
+            
         if be is not None:
             cp = [be] + cp
         if ee is not None:
@@ -145,13 +139,13 @@ def findTransformedVirtualPath(tfvrNet: nx.Graph, sn: int, itmax: int):
 
         if Ocp > Omax:
             Omax, mu = Ocp, cp
-            # print('new mu', Ocpub, cp, Ocp, tn, cur)
-            # print('new mu', Ocpub, len(cp), Ocp, tn, cur)
+            # print('new mu', Ocpub, cp, Ocp, cur)
+            # print('new mu', Ocpub, len(cp), Ocp, cur)
         
         # verification
         # the Ocpub in the condition is not updated
-        if Ocpub > Omax and len(cp) < K:
-        # if (tn < Tn or Tn == -1) and len(cp) < K:
+        # if Ocpub > Omax and len(cp) < K:
+        if len(cp) < K:
 
             # When a new edge is added, if its weight Ld[e] is smaller than the cur-th top edge’s demand Ld(cur)
             # it means we can replace one top edge with the inserted one
@@ -168,13 +162,13 @@ def findTransformedVirtualPath(tfvrNet: nx.Graph, sn: int, itmax: int):
             if bigger < Ld.demands[cur]:
                 Ocpub -= (Ld.demands[cur] + bigger)  / dmax
                 cur -= 1
-            
+
             # domination checking and circle checking
             if Ocp > DT.get(frozenset((be, ee)), 0) and be != ee:
                 DT[frozenset((be, ee))] = Ocp
-                # print('push:', Ocpub, cp, Ocp, tn, cur)
-                # print('push:', Ocpub, len(cp), Ocp, tn, cur)
-                Q.push(Ocpub, cp, Ocp, tn, cur)
+                # print('push:', Ocpub, cp, Ocp, cur)
+                # print('push:', Ocpub, len(cp), Ocp, cur)
+                Q.push(Ocpub, cp, Ocp, cur)
 
     # print(f'findVirtualPath: {time()-time_begin} seconds')    
     return mu
@@ -184,7 +178,17 @@ def findTransformedVirtualPath(tfvrNet: nx.Graph, sn: int, itmax: int):
     input: transformed virtual network, virtual network, physical network, found virtual path
     return: virtual path, physical path, totalCost
 """
-def getVirtualAndPhysicalPath(tfvrNet: nx.Graph, vrNet: nx.Graph, phNet: nx.Graph, tfvrPath: list):
+def getVirtualAndPhysicalPath(tfvrNet: nx.Graph, vrNet: nx.Graph, phNet: nx.Graph, tfvrPath: list, source):
+    # rotate tfvrPath so that it is a circle with the source as first element
+    n = tfvrPath.index(source)
+    if tfvrPath[0] == tfvrPath[-1]:
+        # if vrPath is already a circle
+        n = tfvrPath.index(source)
+        tfvrPath = tfvrPath[n:-1] + tfvrPath[:n] + [source]
+    else:
+        tfvrPath = tfvrPath[n:] + tfvrPath[:n] + [source]
+    print(f'tfvrPath: {tfvrPath}')
+    
     vrPath = [tfvrPath[0]]
     for i in range(len(tfvrPath) - 1):
         vrSubPath = tfvrNet.edges[tfvrPath[i], tfvrPath[i+1]]['path']
@@ -192,6 +196,7 @@ def getVirtualAndPhysicalPath(tfvrNet: nx.Graph, vrNet: nx.Graph, phNet: nx.Grap
         if vrSubPath[-1] == vrPath[-1]:
             vrSubPath = list(reversed(vrSubPath))
         vrPath.extend(vrSubPath[1:])
+    # print(f'vrPath: {vrPath}')
 
     phPath = [vrNet.nodes[vrPath[0]]['phy']]
     for i in range(len(vrPath)-1):
@@ -199,11 +204,17 @@ def getVirtualAndPhysicalPath(tfvrNet: nx.Graph, vrNet: nx.Graph, phNet: nx.Grap
         if phNet.has_edge(u, v):
             phPath.append(v)
         else:
-            sp = nx.dijkstra_path(phNet, u, v)
+            try:
+                sp = nx.dijkstra_path(phNet, u, v)
+            except nx.NetworkXNoPath as e:
+                print(f'getVirtualAndPhysicalPath: Can not find phyiscal path from {u} to {v}')
+                raise e 
             phPath.extend(sp[1:])
+    # print(f'phPath: {phPath}')
 
     totalCost = sum(vrNet.edges[vrPath[n], vrPath[n+1]]['cost'] for n in range(len(vrPath) - 1))
-    return vrPath, phPath, totalCost
+    totalLength = sum(vrNet.edges[vrPath[n], vrPath[n+1]]['length'] for n in range(len(vrPath) - 1))
+    return vrPath, phPath, totalCost, totalLength
 
 
 if __name__ == '__main__':
@@ -262,6 +273,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if args.use_profile:
+        print('Profiling...')
         pr = cProfile.Profile()
         pr.enable()
 
@@ -276,7 +288,7 @@ if __name__ == '__main__':
 
     phNet, obstacles, phWorldL, phWorldW = getPhysical(args.physical_filepath)
 
-    tfvrNet = makeTransformedVirtual(vrNet, source, destinations, args.alpha, costFunc)
+    tfvrNet = makeTransformedVirtual(vrNet, source, destinations, args.alpha)
 
     print(f'virtual network has {vrNet.number_of_nodes()} nodes and {vrNet.number_of_edges()} edges')
     print(f'alpha: {args.alpha}, source: {source}, destination: {destinations}')
@@ -291,11 +303,16 @@ if __name__ == '__main__':
     time_findpaths = time()
 
     ######## FIND VIRTUAL PATH
-    tfvrPath = findTransformedVirtualPath(tfvrNet, args.tnmax, args.sn, args.vritmax)
-    print("tfvrPath:", tfvrPath)
+    tfvrPath = findTransformedVirtualPath(tfvrNet, args.sn, args.vritmax)
+
+    try:
+        assert set(tfvrPath) == destinations | {source}
+    except AssertionError as e:
+        print('Error: tfvrPath does not contain all destinations or source. Missing:', (destinations | {source}) - set(tfvrPath))
+        exit()
 
     ######## GET CORRESPONDING PHYSICAL PATH
-    vrPath, phPath, totalCost = getVirtualAndPhysicalPath(tfvrNet, vrNet, phNet, tfvrPath)
+    vrPath, phPath, totalCost, totalLength = getVirtualAndPhysicalPath(tfvrNet, vrNet, phNet, tfvrPath, source)
     # print("vrPath:", vrPath)
     # print("phPath:", phPath)
     # print("totalCost:", totalCost)
@@ -309,7 +326,8 @@ if __name__ == '__main__':
     ######## OUTPUT
 
     if args.output:
-        outputResult(vrPath, totalCost, vrNet, source, destinations, phPath, phWorldL, phWorldW, obstacles, args)
+        outputJSON(vrPath, totalCost, totalLength, vrNet, source, destinations, args)
+        # outputImage(vrPath, totalCost, totalLength, vrNet, source, destinations, phPath, phWorldL, phWorldW, obstacles, args)
 
     if args.use_profile:
         pr.disable()

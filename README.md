@@ -22,8 +22,8 @@ https://github.com/leonw774/transport_planning_with_commuting_demand/tree/dual-w
 
 - $0 \leq \alpha \leq 1$
 - parameters from original algorithm
-  - $Tn$, $sn$, $itmax$
-  - $Tn$設為無限
+  - $sn$, $itmax$
+  - $Tn$設為無限，不再成為可輸入的參數
 
 ### Transformed virtual world
 
@@ -75,43 +75,34 @@ Attributes:
 
 一個上面有障礙物的棋盤，沒有障礙物的格子對應一個node，從這個格子可用皇后的走法走到的其他格子(不包含自己)都是它的鄰居。
 
-### Cost function
-
-A python function that return a positive float number
-
-``` python
-def costFunc(vrFromNode: tuple, vrToNode: tuple, phFromNode: tuple, phToNode: tuple) -> float:
-```
-
 ## 實作規劃/進度/細節
 
 ### Dataset的讀取/前處理
 
 將dataset讀入後轉換成上述的格式。
 
-- `getVirtual(path: str) -> nx.Graph:`
+- `getVirtual(path: str, vpmap_path:str) -> nx.Graph:`
   - 讀入virtual network
+  - 讀入`tophy`檔，取得:
+    - 每個點在physical的對應
+    - 每個邊的`length`和`cost`
+    - `source`和`destinations`
 
 - `getPhysical(path: str) -> nx.Graph:`
   - 讀入physical network
 
-- `makeTransformedVirtual`
-  - 建出transformed virtual world的network：頂點只有`source`和`destnations`的complete graph
-  - 用`alpha`、`phNet`和`costFunc`給virtual world算出每一個edge的`weight`
-  - 找出virtual network上(`source`+`destnations`)兩兩之間的最小weight/最小weight路徑，分別成為transformed virtual network的`weight`和`path`
-  - `return tfvrNet`
-
-``` python
-def makeTransformedVirtual(vrNet: nx.Graph, source: tuple, destnations: set, alpha: float, costFunc: callable) -> nx.Graph:
-```
+- `makeTransformedVirtual(vrNet: nx.Graph, source: tuple, destnations: set, alpha: float) -> nx.Graph:`
+  - 建出transformed virtual world的network：頂點只有`source`和`destinations`的complete graph
+  - 用`alpha`給virtual world算出每一個edge的`weight`
+  - 找出virtual network上(`source`+`destinations`)兩兩之間的最小weight/最小weight路徑，分別成為transformed virtual network的`weight`和`path`
 
 ### Find virtual graph path
 
 ``` python
-def findTransformedVirtualPath(tfvrNet: nx.Graph, Tn: int, sn: int, itmax: int) -> tuple[list, float]:
+def findTransformedVirtualPath(tfvrNet: nx.Graph, sn: int, itmax: int) -> list
 ```
 
-`return tfvrPath, tfvrValue`
+回傳list of vertices
 
 #### Initialization
 
@@ -130,28 +121,35 @@ Priority queue實作在`pq.py`的`MyPQ`。
 #### 一些狀況
 
 - 為了讓找到的路線可以是環形路線，目前的設計是讓`be == ee`的路線可作為$\mu$的候選路線，但不能expand。
-
 - 無法達成「要全部的vertex都走到才算是合格的輸出路徑」。可能是因為Algorithm 1的Line5-6，當$O^{\uparrow}(cp) \leq O_{max}$時會break loop。但把它拿掉後仍然有時無法將全部的vertex都走到，目前不知道是什麼原因。
+- 如果無法將全部的vertex都走到就報錯
 
 ### Convert transformed virtual path into virtual path and physical path
 
 ``` python
-def getVirtualAndPhysicalPath(tfvrNet: nx.Graph, vrNet: nx.Graph, tfvrPath: list):
+def getVirtualAndPhysicalPath(tfvrNet: nx.Graph, vrNet: nx.Graph, tfvrPath: list, source):
 ```
 
 1. 把找到的tfvrNet的上的path中的每一個edge的`path`接起來就是vrPath
 2. 用virtual network的`phy`把vrPath轉換成phPath
+   - 兩個physical vertex之間找dijkstra最短路徑，然後接起來
 3. 從vrPath算出totalCost
-4. `return vrPath, phPath, totalCost`
+4. `return vrPath, phPath, totalCost, totalLength`
 
 ### 輸出結果
 
-`out.py`裡的`outputResult`是測試時為了能較好看出程式問題而讓它輸出圖片。
+寫在`out.py`裡
 
-我自己加了一個較大的physical空間:phy-big.txt，可以看到更清楚的輸出結果。
+``` python
+def outputJSON(vrPath: list, totalCost: float, totalLength: float, vrNet: nx.Graph, source, destinations, args):
+```
 
-最新的圖片輸出結果: 
+正式JSON格式，檔名為`args.output + '_path.json'`
 
-(尚無)
+``` python
+def outputImage(
+    vrPath: list, totalCost: float, totalLength: float, vrNet: nx.Graph, source, destinations,
+    phPath:list, phWorldL: int, phWorldW: int, obs: list, args):
+```
 
-實際的輸出格式還待後續要求。
+這是為了測試時能較好看出程式問題而讓它輸出圖片，檔名為`args.output + '_img.png'`

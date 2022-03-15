@@ -1,1 +1,0 @@
-gcc -shared -fPIC rw_cost.c -o costlib.so

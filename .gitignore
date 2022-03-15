@@ -1,10 +1,9 @@
-*.osm
-*.graphml
-*.csv
 *.pdf
 *.png
 *.txt
 stat
+data/*
+output/
 # omsnx cache
 cache/ 
 
