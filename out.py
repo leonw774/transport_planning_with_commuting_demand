@@ -22,6 +22,7 @@ def outputJSON(vrPath: list, totalCost: float, totalLength: float, vrNet: nx.Gra
         resultObj['Steps'].append(stepObj)
     json.dump(resultObj, open(f'{args.output}_path.json', 'w+', encoding='utf8'))
 
+
 def outputImage(
     vrPath: list, totalCost: float, totalLength: float, vrNet: nx.Graph, source, destinations,
     phPath:list, phWorldL: int, phWorldW: int, obs: list, args):

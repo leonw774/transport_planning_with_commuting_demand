@@ -1,6 +1,5 @@
 import networkx as nx
 import json
-from random import choice, choices, randint
 
 def getPhysical(path: str) -> nx.Graph:
     with open(path, 'r', encoding='utf-8') as f:
