@@ -116,8 +116,6 @@ Priority queue實作在`pq.py`的`MyPQ`。
 
 進while loop後開始expansion，因為不考慮connectivity的關係，每一次expansion就是從鄰居中找在$L_d$裡面排最前的那個。
 
-與計算夾角和距離有關的函數都放在`geo.py`。雖然$Tn$設成無限之後就不需要計算夾角了但還是先留著誰知道以後用不用得上。
-
 #### 一些狀況
 
 - 為了讓找到的路線可以是環形路線，目前的設計是讓`be == ee`的路線可作為$\mu$的候選路線，但不能expand。
