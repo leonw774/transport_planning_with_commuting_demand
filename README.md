@@ -68,7 +68,7 @@ Attributes:
 
 Attributes:
 - Edge
-  - `weight` = $-|e'|$
+  - `weight` = $|e'|$
   - `path` = $p_{e'}$
 
 ### Physical network
@@ -81,34 +81,40 @@ Attributes:
 
 將dataset讀入後轉換成上述的格式。
 
-- `getVirtual(path: str, vpmap_path:str) -> nx.Graph:`
+- `get_vrnet(path: str, vpmap_path:str) -> nx.Graph:`
   - 讀入virtual network
   - 讀入`tophy`檔，取得:
     - 每個點在physical的對應
     - 每個邊的`length`和`cost`
     - `source`和`destinations`
 
-- `getPhysical(path: str) -> nx.Graph:`
+- `get_phnet(path: str) -> nx.Graph:`
   - 讀入physical network
 
-- `makeTransformedVirtual(vrNet: nx.Graph, source: tuple, destnations: set, alpha: float) -> nx.Graph:`
+- `make_tfvrnet(vrnet: nx.Graph, source: tuple, destnations: set, alpha: float) -> nx.Graph:`
   - 建出transformed virtual world的network：頂點只有`source`和`destinations`的complete graph
   - 用`alpha`給virtual world算出每一個edge的`weight`
   - 找出virtual network上(`source`+`destinations`)兩兩之間的最小weight/最小weight路徑，分別成為transformed virtual network的`weight`和`path`
 
-### Find virtual graph path
+以上這些函數寫在`nets.py`
+
+### Find transformed virtual graph path
+
+寫在`algo.py`
 
 ``` python
-def findTransformedVirtualPath(tfvrNet: nx.Graph, sn: int, itmax: int) -> list
+def find_tfvrpath(tfvrnet: nx.Graph, sn: int, itmax: int) -> list
 ```
 
 回傳list of vertices
 
 #### Initialization
 
-`getCandidateEdges`回傳$L_d$，因為不考慮connetivity，它同時也是$L_e$。我寫了一個class `SortedEdgeScoreList`實作它。
+`get_candidate_edges`回傳$L_d$，因為不考慮connetivity，它同時也是$L_e$。我寫了一個class `SortedEdgeScoreList`實作它。
 
-$K$設為transit network的node數量和candidate edges的總數取最小值。
+計算score的方式是`score = max_weight - vrnet.edges[u, v]['weight']`，因為我們想找最小weight。
+
+$K$設為transit network的node數量+1，因為要充許環形路線。
 
 Priority queue實作在`pq.py`的`MyPQ`。
 
@@ -116,16 +122,19 @@ Priority queue實作在`pq.py`的`MyPQ`。
 
 進while loop後開始expansion，因為不考慮connectivity的關係，每一次expansion就是從鄰居中找在$L_d$裡面排最前的那個。
 
-#### 一些狀況
+### 無法輸出合格路徑的狀況
 
-- 為了讓找到的路線可以是環形路線，目前的設計是讓`be == ee`的路線可作為$\mu$的候選路線，但不能expand。
-- 無法達成「要全部的vertex都走到才算是合格的輸出路徑」。可能是因為Algorithm 1的Line5-6，當$O^{\uparrow}(cp) \leq O_{max}$時會break loop。但把它拿掉後仍然有時無法將全部的vertex都走到，目前不知道是什麼原因。
-- 如果無法將全部的vertex都走到就報錯
+- 有可能發生`be == ee`。論文裡有寫說環形路線可作為$\mu$的候選路線，所以允許。但它應該是不能expand的。
+- 然而因為有時變成環形路線是局部最佳解，然後剛好全部(其實就十幾個)的expansion都過早成環，在全部的vertex都走到前就結束了。
+- 一個解法是，只有當$cp$的長度$\geq K - 2$的時候才允許`be == ee`，其他時候將`be`或`ee`改成他們的其他候選edge中score最高的那個，這樣就不會過早的將環形路線加入考慮。
+- 還有一種狀況是在全部的vertex都走到之前就$O_d(cp) > O^{\uparrow}_d(cp)$，這也會讓分支提早結束。這個是寫死在演算法裡的，應該不能改了。
 
 ### Convert transformed virtual path into virtual path and physical path
 
+寫在`main.py`
+
 ``` python
-def getVirtualAndPhysicalPath(tfvrNet: nx.Graph, vrNet: nx.Graph, tfvrPath: list, source):
+def get_paths(tfvrNet: nx.Graph, vrNet: nx.Graph, tfvrPath: list, source):
 ```
 
 1. 把找到的tfvrNet的上的path中的每一個edge的`path`接起來就是vrPath
@@ -136,7 +145,7 @@ def getVirtualAndPhysicalPath(tfvrNet: nx.Graph, vrNet: nx.Graph, tfvrPath: list
 
 ### 輸出結果
 
-寫在`out.py`裡
+寫在`out.py`
 
 ``` python
 def outputJSON(vrPath: list, totalCost: float, totalLength: float, vrNet: nx.Graph, source, destinations, args):
