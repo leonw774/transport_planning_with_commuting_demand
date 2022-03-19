@@ -77,7 +77,7 @@ def find_tfvrpath(tfvrnet: nx.Graph, sn: int, itmax: int) -> list:
     assert len(ld) >= k
 
     # regularization
-    ld.regularize(k)
+    # ld.regularize(k)
 
     # because no connectivity involved, Omax == Odmax
     omax = ld.demands[0]
@@ -87,10 +87,10 @@ def find_tfvrpath(tfvrnet: nx.Graph, sn: int, itmax: int) -> list:
     for i, e in enumerate(ld.edges):
         if i < k:
             cursor = k - 1
-            d_ub = 1 # ub = upper bound
+            d_ub = sum(ld.demands) # ub = upper bound
         else:
             cursor = k - 2
-            d_ub = (1 - ld.demands[k - 1] + ld.edge2d[e])
+            d_ub = (sum(ld.demands) - ld.demands[k - 1] + ld.edge2d[e])
         pq.push(d_ub, [*e], ld.edge2d[e], cursor)
 
     #### expansion phase
@@ -135,8 +135,6 @@ def find_tfvrpath(tfvrnet: nx.Graph, sn: int, itmax: int) -> list:
                     be, maxd_be = b_second_highest_e, b_second_highest_d_e
                 else:
                     ee, maxd_ee = e_second_highest_e, e_second_highest_d_e
-            else:
-                print('allow circle', len(cp))
 
         # print("be, maxd_be, ee, maxd_ee:", be, maxd_be, ee, maxd_ee)
 
@@ -170,11 +168,17 @@ def find_tfvrpath(tfvrnet: nx.Graph, sn: int, itmax: int) -> list:
             smaller, bigger = (maxd_be, maxd_ee) if maxd_be < maxd_ee else (maxd_ee, maxd_be)
 
             if smaller < ld.demands[cur]:
-                ocpub -= (ld.demands[cur] + smaller)
+                ocpub -= (ld.demands[cur] - smaller)
                 cur -= 1
             if bigger < ld.demands[cur]:
-                ocpub -= (ld.demands[cur] + bigger)
+                ocpub -= (ld.demands[cur] - bigger)
                 cur -= 1
+
+            try:
+                assert ocpub >= ocp
+            except AssertionError as e:
+                print('Ocpub < Ocp:', ocpub, cp, ocp, cur)
+                raise e
 
             # domination checking and circle checking
             if ocp > dt.get(frozenset((be, ee)), 0):

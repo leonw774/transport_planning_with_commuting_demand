@@ -91,6 +91,7 @@ def make_tfvrnet(vrnet: nx.Graph, source: tuple, destnations: set, alpha: float)
         input: virtual network, source vertex, destination vertices, alpha
         return: transformed virtual network
     """
+
     # initialize transformd virtual network
     print('making transformed virtual network')
     nodes_of_interest = destnations.union([source])
@@ -104,10 +105,14 @@ def make_tfvrnet(vrnet: nx.Graph, source: tuple, destnations: set, alpha: float)
     edges_to_remove = []
     for u, v in tfvrnet.edges():
         try:
-            tfvrnet.edges[u, v]['weight'] = nx.shortest_path_length(vrnet, u, v, weight='weight')
             tfvrnet.edges[u, v]['path'] = nx.shortest_path(vrnet, u, v, weight='weight')
         except nx.NetworkXNoPath:
             edges_to_remove.append((u, v))
+        tfvrnet.edges[u, v]['weight'] = sum(
+            vrnet.edges[u, v]['weight']
+            for u, v in zip(tfvrnet.edges[u, v]['path'][:-1], tfvrnet.edges[u, v]['path'][1:])
+        )
+        # assert tfvrnet.edges[u, v]['weight'] == nx.shortest_path_length(vrnet, u, v, weight='weight')
 
     for etr in edges_to_remove:
         tfvrnet.remove_edge(*etr)
