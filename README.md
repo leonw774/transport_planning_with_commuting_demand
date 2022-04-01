@@ -160,3 +160,42 @@ def outputImage(
 ```
 
 這是為了測試時能較好看出程式問題而讓它輸出圖片，檔名為`args.output + '_img.png'`
+
+## 執行方法
+
+Dependencies:
+- Python 3.8 以上
+- nexworkx 2.6 以上
+
+使用範例
+
+```
+python3 main.py -v vindex_G20.txt -p physical.txt -m G20_tophy.json -c 1000 -a 0.5 -o output/G20
+```
+
+解釋:
+
+- `-v VIRTUAL_FILEPATH`
+    - virtual世界的檔案路徑。
+    - 字串。
+    - 必填。
+- `-p PHYSICAL_FILEPATH`
+    - physical世界的檔案路徑。
+    - 字串。
+    - 必填。
+- `-m VP_MAPPING_FILEPATH`
+    - virtophy的檔案路徑。
+    - 字串。
+    - 必填。
+- `-c COST_LIMIT` 或 `--cost-limit COST_LIMIT`
+    - cost限制，如果找到的路徑cost大於它會說找不到，然後程式中斷。
+    - 浮點數。
+    - 非必填，預設無限大。
+- `-a ALPHA` 或 `--alpha ALPHA`
+    - alpha的值。
+    - 浮點數。
+    - 非必填，預設1.0。
+- `-o OUTPUT_FILEPATH`
+    - 輸出的json檔和png檔的路徑前綴，範例：`-o output/G20`輸出兩個檔案:`output/G20_img.png`與`output/G20_alpha1.0_path.json`
+    - 字串。
+    - 非必填，預設`output/out`
