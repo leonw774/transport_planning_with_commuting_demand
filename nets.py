@@ -99,6 +99,7 @@ def make_tfvrnet(vrnet: nx.Graph, source: tuple, destnations: set, alpha: float)
 
     # calc single edge weights on vrnet
     for u, v, attr in vrnet.edges(data=True):
+        assert 'length' in attr and 'cost' in attr
         vrnet.edges[u, v]['weight'] = alpha * attr['length'] + (1 - alpha) * attr['cost']
 
     # calc weights for tfvrnet
